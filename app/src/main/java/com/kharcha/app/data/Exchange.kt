@@ -4,6 +4,7 @@ import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.model.Category
 import com.kharcha.app.core.model.Item
 import com.kharcha.app.core.model.Kind
+import com.kharcha.app.core.model.PayMethod
 import com.kharcha.app.core.model.Sheet
 import com.kharcha.app.core.util.Csv
 import com.kharcha.app.core.util.Dates
@@ -50,6 +51,7 @@ data class CsvRow(
     val merchant: String,
     val at: Long,
     val pending: Boolean,
+    val method: PayMethod = PayMethod.NONE,
 )
 
 data class CsvPreview(
@@ -145,6 +147,7 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
     private val header = listOf(
         "Date", "Time", "Type", "Amount", "Currency", "Category", "Notes", "Merchant", "Sheet",
         "Pending", "Repeat", "Amount in sheet currency", "Sheet currency", "Pictures",
+        "Paid with", "Who paid", "Friends owe",
     )
 
     /** The items of the given sheets (all sheets when null) inside a stretch of time, oldest first. */
@@ -163,6 +166,8 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
         for (item in items) {
             val sheet = data.sheet(item.sheetId) ?: continue
             val type = when {
+                item.settles != null && item.kind == Kind.INCOME -> "Repaid to me"
+                item.settles != null -> "Repaid by me"
                 item.isTransfer && item.kind == Kind.EXPENSE -> "Transfer out"
                 item.isTransfer -> "Transfer in"
                 item.kind == Kind.EXPENSE -> "Expense"
@@ -184,6 +189,10 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
                     Money.plain(item.inSheet(sheet), sheet.currency),
                     sheet.currency,
                     item.images.joinToString(" "),
+                    if (item.method == PayMethod.NONE) "" else item.method.label,
+                    // Who paid the bill: a friend's name, or the friend a repayment was with.
+                    data.person(item.payer ?: item.settles)?.name.orEmpty(),
+                    if (item.lent > 0L) Money.plain(item.lent, item.currency) else "",
                 ),
             )
         }
@@ -234,6 +243,7 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
         val noteAt = column(headers, "notes", "note", "description", "memo", "details", "title", "name")
         val merchantAt = column(headers, "merchant", "payee", "vendor", "store")
         val pendingAt = column(headers, "pending", "status")
+        val methodAt = column(headers, "paid with", "payment method", "method", "payment")
         if (dateAt < 0 || (amountAt < 0 && outAt < 0 && inAt < 0)) {
             return CsvPreview(emptyList(), 0, emptyList(), "The first row must name the columns, with at least a Date and an Amount column.")
         }
@@ -276,6 +286,15 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
                 merchant = cell(merchantAt),
                 at = Dates.millis(date, time),
                 pending = pendingText == "yes" || pendingText == "true" || pendingText == "pending" || pendingText == "1",
+                method = cell(methodAt).lowercase().let { text ->
+                    when {
+                        text.contains("upi") -> PayMethod.UPI
+                        text.contains("cash") -> PayMethod.CASH
+                        text.contains("card") -> PayMethod.CARD
+                        text.contains("bank") || text.contains("transfer") -> PayMethod.BANK
+                        else -> PayMethod.NONE
+                    }
+                },
             )
         }
         val known = ledger.current.liveCategories
@@ -312,6 +331,7 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
                 categoryId = all.firstOrNull { it.kind == row.kind && it.name.equals(row.category, ignoreCase = true) }?.id,
                 at = row.at,
                 pending = row.pending,
+                method = row.method,
                 createdAt = time,
                 editedAt = time,
             )

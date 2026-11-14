@@ -46,6 +46,10 @@ import com.kharcha.app.ui.nav.AppearanceRoute
 import com.kharcha.app.ui.nav.BackupRoute
 import com.kharcha.app.ui.nav.CategoriesRoute
 import com.kharcha.app.ui.nav.ExportRoute
+import com.kharcha.app.ui.nav.HabitRoute
+import com.kharcha.app.ui.nav.InsightsRoute
+import com.kharcha.app.ui.nav.PeopleRoute
+import com.kharcha.app.ui.nav.RemindersRoute
 import com.kharcha.app.ui.nav.ImportRoute
 import com.kharcha.app.ui.nav.LocalContainer
 import com.kharcha.app.ui.nav.LocalNav
@@ -77,11 +81,24 @@ fun SettingsScreen() {
                 KIcon(Ic.workspace_premium, fill = true, size = 34.dp)
                 Column(Modifier.weight(1f)) {
                     Text("Everything is unlocked", style = MaterialTheme.typography.titleLarge)
-                    Text("Unlimited sheets, repeats, pictures, stats, trends, printing, app icons. Nothing to buy, no account.", style = MaterialTheme.typography.bodyMedium)
+                    Text("Unlimited sheets, repeats, pictures, stats, trends, printing, app icons, widgets, friends. Nothing to buy, no account.", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
         Gap(12.dp)
+
+        KGroup {
+            SettingRow(0, 4, "Friends", icon = Ic.group, iconColor = Color(0xFFEC4A63), subtitle = "Split bills, who owes whom", onClick = { nav.go(PeopleRoute) })
+            SettingRow(1, 4, "Insights", icon = Ic.insights, iconColor = Color(0xFF7E57C2), subtitle = "Where you could save", onClick = { nav.go(InsightsRoute) })
+            SettingRow(2, 4, "Habit and goals", icon = Ic.savings, iconColor = Color(0xFF2FA866), subtitle = "Your streak, your tree, saving and investing goals", onClick = { nav.go(HabitRoute) })
+            SettingRow(
+                3, 4, "Reminders and backup", icon = Ic.notifications, iconColor = Color(0xFFF59B42),
+                subtitle = "Daily reminder, automatic backup to Downloads",
+                value = if (settings.reminder) "On" else null,
+                onClick = { nav.go(RemindersRoute) },
+            )
+        }
+        Gap(14.dp)
 
         KGroup {
             SettingRow(

@@ -231,7 +231,7 @@ fun HeroCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val (bg, fg) = cardColors(kind)
-    val shape = RoundedCornerShape(KharchaRadius.xl)
+    val shape = MaterialTheme.shapes.extraLarge
     val colors = CardDefaults.cardColors(containerColor = bg, contentColor = fg)
     val turn by rememberInfiniteTransition(label = "hero").animateFloat(
         initialValue = 0f,
@@ -250,13 +250,14 @@ fun HeroCard(
                     .clip(decoration.toShape())
                     .background(fg.copy(alpha = 0.08f)),
             )
-            Column(Modifier.padding(22.dp), content = content)
+            Column(Modifier.fillMaxWidth().padding(22.dp), content = content)
         }
     }
+    // A hero card always spans the width it is given.
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier, shape = shape, colors = colors, content = body)
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, content = body)
     } else {
-        Card(modifier = modifier, shape = shape, colors = colors, content = body)
+        Card(modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, content = body)
     }
 }
 

@@ -1,6 +1,25 @@
 package com.kharcha.app.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.kharcha.app.core.model.Accent
+import com.kharcha.app.core.model.Corners
+import com.kharcha.app.core.model.FontChoice
+import com.kharcha.app.core.model.TextSize
+import com.kharcha.app.ui.components.GroupItem
+import com.kharcha.app.ui.components.KIcon
+import com.kharcha.app.ui.components.rememberHaptics
+import com.kharcha.app.ui.theme.fontFamily
+import com.kharcha.app.ui.theme.withHue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,13 +55,16 @@ import com.kharcha.app.ui.nav.LocalMessenger
 import com.kharcha.app.ui.nav.LocalNav
 import com.kharcha.app.ui.theme.supportsDynamicColor
 
-/** Light, dark or automatic, and whether to take colours from the phone's wallpaper. */
+/** Everything about the look: theme, colours, typeface, text size and corners. Changes apply at once. */
 @Composable
 fun AppearanceScreen() {
     val app = LocalContainer.current
     val nav = LocalNav.current
+    val haptics = rememberHaptics()
+    val scheme = MaterialTheme.colorScheme
     val settings by app.settings.settings.collectAsStateWithLifecycle()
     val choices = listOf(ThemeChoice.SYSTEM, ThemeChoice.LIGHT, ThemeChoice.DARK)
+    val iris = Color(0xFF565EF0)
 
     ScreenColumn {
         AppBar(onBack = { nav.back() }, title = "Appearance")
@@ -53,19 +75,90 @@ fun AppearanceScreen() {
             onSelect = { index -> app.settings.update { it.copy(theme = choices[index]) } },
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        Foot("Automatic follows the phone's own light or dark setting.")
+        Gap(10.dp)
+        KGroup {
+            SwitchRow(
+                0, 1, "Pure black", settings.pureBlack, { on -> app.settings.update { it.copy(pureBlack = on) } },
+                icon = Ic.dark_mode,
+                subtitle = "In the dark theme, a true black background",
+            )
+        }
 
-        if (supportsDynamicColor()) {
-            SectionHeader("Colours")
-            KGroup {
+        SectionHeader("Colour")
+        KGroup {
+            GroupItem(0, if (supportsDynamicColor()) 2 else 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Accent.entries.forEach { accent ->
+                        val swatch = accent.hue?.let { iris.withHue(it) } ?: iris
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(CircleShape)
+                                .background(swatch)
+                                .clickable(onClickLabel = "Use ${accent.label}") {
+                                    haptics.tick()
+                                    app.settings.update { it.copy(accent = accent, dynamicColor = false) }
+                                }
+                                .semantics { contentDescription = accent.label },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (settings.accent == accent && !settings.dynamicColor) KIcon(Ic.check, tint = Color.White, contentDescription = "Selected")
+                        }
+                    }
+                }
+            }
+            if (supportsDynamicColor()) {
                 SwitchRow(
-                    0, 1, "Phone colours", settings.dynamicColor, { on -> app.settings.update { it.copy(dynamicColor = on) } },
+                    1, 2, "Phone colours", settings.dynamicColor, { on -> app.settings.update { it.copy(dynamicColor = on) } },
                     icon = Ic.palette,
-                    subtitle = "Use your wallpaper's colours instead of Kharcha iris",
+                    subtitle = "Use your wallpaper's colours instead",
                 )
             }
         }
-        Foot("Touch vibrations follow the phone's own \"Touch feedback\" setting.")
+
+        SectionHeader("Typeface")
+        KGroup {
+            FontChoice.entries.forEachIndexed { index, choice ->
+                CheckRow(
+                    index, FontChoice.entries.size, choice.label,
+                    selected = settings.font == choice,
+                    onClick = { app.settings.update { it.copy(font = choice) } },
+                    leading = {
+                        Text(
+                            "Aa ₹8",
+                            style = MaterialTheme.typography.titleLarge.copy(fontFamily = fontFamily(choice)),
+                            color = scheme.primary,
+                            modifier = Modifier.width(76.dp),
+                            maxLines = 1,
+                        )
+                    },
+                )
+            }
+        }
+
+        SectionHeader("Text size")
+        ButtonGroup(
+            options = TextSize.entries.map { GroupOption(it.label) },
+            selectedIndex = settings.textSize.ordinal,
+            onSelect = { index -> app.settings.update { it.copy(textSize = TextSize.entries[index]) } },
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Foot("This is on top of the font size set in the phone's own settings.")
+
+        SectionHeader("Corners")
+        ButtonGroup(
+            options = Corners.entries.map { GroupOption(it.label) },
+            selectedIndex = settings.corners.ordinal,
+            onSelect = { index -> app.settings.update { it.copy(corners = Corners.entries[index]) } },
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Foot("How round cards and rows are. Touch vibrations follow the phone's own \"Touch feedback\" setting.")
     }
 }
 

@@ -4,6 +4,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 /*
  * Kharcha's own colours: "iris and marigold on ink".
@@ -115,3 +116,61 @@ fun kharchaExtras(dark: Boolean): KharchaExtras = if (dark) {
 } else {
     KharchaExtras(hero = IrisDeep, onHero = Color(0xFFFFFFFF), income = Color(0xFF1B6B3F), expense = Color(0xFFB3261E))
 }
+
+// ---------------------------------------------------------------------------
+// Other accents, and a true-black dark theme
+// ---------------------------------------------------------------------------
+
+/** The same colour moved to another place on the colour wheel, keeping how strong and how light it is. */
+fun Color.withHue(hue: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(toArgb(), hsv)
+    hsv[0] = hue
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
+ * A whole scheme in another accent: every iris-tinted colour is turned to the new hue.
+ * Marigold (tertiary) and the error reds keep their meaning, so they are left alone.
+ */
+fun ColorScheme.withAccent(hue: Float): ColorScheme = copy(
+    primary = primary.withHue(hue),
+    onPrimary = onPrimary.withHue(hue),
+    primaryContainer = primaryContainer.withHue(hue),
+    onPrimaryContainer = onPrimaryContainer.withHue(hue),
+    inversePrimary = inversePrimary.withHue(hue),
+    secondary = secondary.withHue(hue),
+    onSecondary = onSecondary.withHue(hue),
+    secondaryContainer = secondaryContainer.withHue(hue),
+    onSecondaryContainer = onSecondaryContainer.withHue(hue),
+    background = background.withHue(hue),
+    onBackground = onBackground.withHue(hue),
+    surface = surface.withHue(hue),
+    onSurface = onSurface.withHue(hue),
+    surfaceVariant = surfaceVariant.withHue(hue),
+    onSurfaceVariant = onSurfaceVariant.withHue(hue),
+    surfaceTint = surfaceTint.withHue(hue),
+    inverseSurface = inverseSurface.withHue(hue),
+    inverseOnSurface = inverseOnSurface.withHue(hue),
+    outline = outline.withHue(hue),
+    outlineVariant = outlineVariant.withHue(hue),
+    surfaceBright = surfaceBright.withHue(hue),
+    surfaceDim = surfaceDim.withHue(hue),
+    surfaceContainerLowest = surfaceContainerLowest.withHue(hue),
+    surfaceContainerLow = surfaceContainerLow.withHue(hue),
+    surfaceContainer = surfaceContainer.withHue(hue),
+    surfaceContainerHigh = surfaceContainerHigh.withHue(hue),
+    surfaceContainerHighest = surfaceContainerHighest.withHue(hue),
+)
+
+/** A dark scheme on true black, for OLED screens. Cards stay a shade lighter so they still read as cards. */
+fun ColorScheme.onBlack(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0B0B0D),
+    surfaceContainer = Color(0xFF141417),
+    surfaceContainerHigh = Color(0xFF1C1C20),
+    surfaceContainerHighest = Color(0xFF26262B),
+)

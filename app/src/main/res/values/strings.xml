@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kharcha</string>
+
+    <!-- Home-screen widgets (the launcher shows these names in its widget picker). -->
+    <string name="widget_today">Kharcha: today</string>
+    <string name="widget_month">Kharcha: this month</string>
+    <string name="widget_today_description">What you spent today, your streak, and a button to add an item.</string>
+    <string name="widget_month_description">This month against your budget, and what friends owe you.</string>
+    <string name="widget_spent_today">Spent today</string>
+    <string name="widget_spent_month">This month</string>
+    <string name="widget_add">New item</string>
 </resources>

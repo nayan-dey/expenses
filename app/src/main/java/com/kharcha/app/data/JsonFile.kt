@@ -37,6 +37,8 @@ class JsonFile<T>(
     private val serializer: KSerializer<T>,
     private val default: T,
     scope: CoroutineScope,
+    /** Called after each write to disk (the home-screen widgets redraw from here). */
+    private val onSaved: () -> Unit = {},
 ) {
     private val backup = File(file.parentFile, file.name + ".bak")
     private val _state = MutableStateFlow(default)
@@ -59,6 +61,7 @@ class JsonFile<T>(
             for (signal in dirty) {
                 delay(200)
                 runCatching { write(_state.value) }
+                runCatching { onSaved() }
             }
         }
     }

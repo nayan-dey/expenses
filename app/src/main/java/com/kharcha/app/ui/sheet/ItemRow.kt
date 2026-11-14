@@ -10,11 +10,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.model.Item
 import com.kharcha.app.core.model.Kind
+import com.kharcha.app.core.model.PayMethod
 import com.kharcha.app.core.model.Repeat
 import com.kharcha.app.core.model.Sheet
 import com.kharcha.app.core.util.Dates
@@ -38,9 +40,18 @@ import com.kharcha.app.ui.theme.KharchaType
 @Composable
 fun ItemRowContent(item: Item, sheet: Sheet, data: AppData, modifier: Modifier = Modifier, extra: String? = null, checked: Boolean? = null) {
     val scheme = MaterialTheme.colorScheme
+    // A word about sharing: who paid, or who it was split with.
+    val shared = when {
+        item.payer != null -> "${data.person(item.payer)?.name ?: "A friend"} paid"
+        item.splits.size == 1 -> "split with ${data.person(item.splits.first().personId)?.name ?: "a friend"}"
+        item.splits.isNotEmpty() -> "split with ${item.splits.size}"
+        else -> null
+    }
     val second = listOfNotNull(
         item.note.takeIf { it.isNotBlank() },
         item.merchant.takeIf { it.isNotBlank() },
+        shared,
+        item.method.takeIf { it != PayMethod.NONE }?.label,
         extra,
     ).joinToString(" · ")
     Row(
@@ -58,7 +69,11 @@ fun ItemRowContent(item: Item, sheet: Sheet, data: AppData, modifier: Modifier =
                 contentDescription = if (checked) "Selected" else "Not selected",
             )
         }
-        CategoryDot(data.category(item.categoryId), transfer = item.isTransfer)
+        if (item.settles != null) {
+            CategoryDot(Ic.handshake, Color(0xFF2FA866))
+        } else {
+            CategoryDot(data.category(item.categoryId), transfer = item.isTransfer)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(data.titleOf(item), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (second.isNotEmpty()) {
@@ -69,7 +84,12 @@ fun ItemRowContent(item: Item, sheet: Sheet, data: AppData, modifier: Modifier =
             Text(
                 moneySigned(item.inSheet(sheet), sheet.currency, item.kind),
                 style = KharchaType.amount,
-                color = if (item.kind == Kind.INCOME) KharchaTheme.extras.income else scheme.onSurface,
+                // A bill a friend paid has not left your pocket: it is shown quieter.
+                color = when {
+                    item.payer != null -> scheme.onSurfaceVariant
+                    item.kind == Kind.INCOME -> KharchaTheme.extras.income
+                    else -> scheme.onSurface
+                },
                 maxLines = 1,
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {

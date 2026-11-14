@@ -44,6 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.model.Item
 import com.kharcha.app.core.model.Kind
+import com.kharcha.app.core.model.PayMethod
+import com.kharcha.app.core.model.Person
+import com.kharcha.app.core.model.Split
 import com.kharcha.app.core.model.Repeat
 import com.kharcha.app.core.util.Calc
 import com.kharcha.app.core.util.Currencies
@@ -75,11 +78,13 @@ import com.kharcha.app.ui.components.KField
 import com.kharcha.app.ui.components.KGroup
 import com.kharcha.app.ui.components.Keypad
 import com.kharcha.app.ui.components.MerchantSheet
+import com.kharcha.app.ui.components.PayerSheet
 import com.kharcha.app.ui.components.PictureViewer
 import com.kharcha.app.ui.components.PromptDialog
 import com.kharcha.app.ui.components.RowContent
 import com.kharcha.app.ui.components.SettingRow
 import com.kharcha.app.ui.components.SheetPickSheet
+import com.kharcha.app.ui.components.SplitWithSheet
 import com.kharcha.app.ui.components.SwitchRow
 import com.kharcha.app.ui.components.Thumb
 import com.kharcha.app.ui.components.TimeDialog
@@ -118,6 +123,18 @@ private data class Draft(
     val pending: Boolean = false,
     val repeat: Repeat = Repeat.NEVER,
     val images: List<String> = emptyList(),
+    /** UPI, cash, card. */
+    val method: PayMethod = PayMethod.NONE,
+    /** The friend who paid the bill, or null when you paid. */
+    val payer: String? = null,
+    /** Friends sharing a bill you paid. */
+    val splitWith: List<String> = emptyList(),
+    /** true = everyone, you included, pays the same; false = the amounts typed in [shares]. */
+    val equal: Boolean = true,
+    /** Hand-typed shares, friend id to amount text. */
+    val shares: Map<String, String> = emptyMap(),
+    /** Set when this is a settling-up payment with a friend. */
+    val settles: String? = null,
 ) {
     val kind: Kind get() = if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE
     val isTransfer: Boolean get() = mode == TRANSFER
@@ -200,6 +217,13 @@ fun ItemEditScreen(key: ItemRoute) {
                     pending = template.pending,
                     repeat = if (existing != null) template.repeat else Repeat.NEVER,
                     images = if (existing != null) template.images else emptyList(),
+                    method = template.method,
+                    payer = template.payer,
+                    splitWith = template.splits.map { it.personId },
+                    // Equal when every friend's share is exactly the amount divided by everyone.
+                    equal = template.splits.all { it.amountMinor == template.amountMinor / (template.splits.size + 1) },
+                    shares = template.splits.associate { it.personId to Money.plain(it.amountMinor, template.currency) },
+                    settles = if (existing != null) template.settles else null,
                 )
                 else -> {
                     val mode = if (key.kind in setOf("EXPENSE", "INCOME", TRANSFER)) key.kind else "EXPENSE"
@@ -209,6 +233,7 @@ fun ItemEditScreen(key: ItemRoute) {
                         categoryId = if (mode == TRANSFER) null else start.lastCategory(key.sheetId, if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE),
                         sheetId = key.sheetId,
                         at = now,
+                        method = app.settings.current.lastMethod,
                     )
                 }
             },
@@ -226,6 +251,10 @@ fun ItemEditScreen(key: ItemRoute) {
     var pickTime by remember { mutableStateOf(false) }
     var pickRepeat by remember { mutableStateOf(false) }
     var askRate by remember { mutableStateOf(false) }
+    var pickPayer by remember { mutableStateOf(false) }
+    var pickSplit by remember { mutableStateOf(false) }
+    /** The friend whose share is being typed, or null. */
+    var askShare by remember { mutableStateOf<String?>(null) }
     var viewing by remember { mutableStateOf<String?>(null) }
     var cameraName by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -256,8 +285,20 @@ fun ItemEditScreen(key: ItemRoute) {
     val rateToTarget: Double? = if (toSheet == null) null else rateTo(toSheet.currency, savedIn)
     val foreign = draft.currency != sheet.currency
 
+    // What each friend owes back on a bill you paid, in the item's currency.
+    val splitting = draft.mode == "EXPENSE" && draft.payer == null && draft.settles == null && draft.splitWith.isNotEmpty()
+    val shareMinor: Map<String, Long> = when {
+        !splitting || amountMinor == null -> emptyMap()
+        draft.equal -> draft.splitWith.associateWith { amountMinor / (draft.splitWith.size + 1) }
+        else -> draft.splitWith.associateWith { id ->
+            draft.shares[id]?.replace(",", "")?.toBigDecimalOrNull()?.let { Money.toMinor(it, draft.currency) }?.coerceAtLeast(0L) ?: 0L
+        }
+    }
+    val lent = shareMinor.values.sum()
+
     val problem: String? = when {
         amountMinor == null || amountMinor <= 0L -> "Enter an amount"
+        lent > amountMinor -> "The shares add up to more than the amount"
         rate == null -> "Set an exchange rate"
         draft.isTransfer && toSheet == null -> "Choose where the money goes"
         draft.isTransfer && toSheet?.id == sheet.id -> "Choose two different sheets"
@@ -305,9 +346,14 @@ fun ItemEditScreen(key: ItemRoute) {
                     repeat = draft.repeat,
                     seriesId = existing?.seriesId,
                     images = draft.images,
+                    method = draft.method,
+                    payer = if (draft.kind == Kind.EXPENSE && draft.settles == null) draft.payer else null,
+                    splits = shareMinor.filterValues { it > 0L }.map { (id, share) -> Split(id, share) },
+                    settles = draft.settles,
                     createdAt = existing?.createdAt ?: 0L,
                 ),
             )
+            app.settings.update { it.copy(lastMethod = draft.method) }
         }
         haptics.confirm()
         nav.back()
@@ -342,6 +388,7 @@ fun ItemEditScreen(key: ItemRoute) {
             onBack = { nav.back() },
             title = when {
                 isNew -> "New item"
+                draft.settles != null -> "Settling up"
                 draft.isTransfer -> "Transfer"
                 else -> "Details"
             },
@@ -356,6 +403,7 @@ fun ItemEditScreen(key: ItemRoute) {
         ) {
             // Expense, income or transfer. A saved transfer stays a transfer.
             val modes = when {
+                draft.settles != null -> emptyList()
                 isNew -> listOf("EXPENSE" to "Expense", "INCOME" to "Income", TRANSFER to "Transfer")
                 draft.isTransfer -> emptyList()
                 else -> listOf("EXPENSE" to "Expense", "INCOME" to "Income")
@@ -459,6 +507,12 @@ fun ItemEditScreen(key: ItemRoute) {
                 if (toSheet != null && toSheet.currency != draft.currency && rateToTarget != null && amountMinor != null && !hidden) {
                     Foot("Arrives as ${Money.format(Money.convert(amountMinor, draft.currency, toSheet.currency, rateToTarget), toSheet.currency)} in ${toSheet.name}.")
                 }
+            } else if (draft.settles != null) {
+                KGroup {
+                    SettingRow(0, 2, "Settling up with", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = data.person(draft.settles)?.name ?: "A friend")
+                    SettingRow(1, 2, "Sheet", icon = Ic.description, iconColor = Color(0xFF6C7CF5), value = sheet.name, onClick = { pickSheet = "from" })
+                }
+                Foot(if (draft.kind == Kind.INCOME) "They paid you back. This is not income: it only squares things between you." else "You paid them back. This is not spending: it only squares things between you.")
             } else {
                 val category = data.category(draft.categoryId)
                 val rows = if (sheet.showMerchant) 3 else 2
@@ -503,6 +557,72 @@ fun ItemEditScreen(key: ItemRoute) {
                         }
                     }
                     SettingRow(position, rows, "Sheet", icon = Ic.description, iconColor = Color(0xFF6C7CF5), value = sheet.name, onClick = { pickSheet = "from" })
+                }
+            }
+
+            if (!draft.isTransfer) {
+                Gap(12.dp)
+                KGroup {
+                    GroupItem(0, 1) {
+                        Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                IconTile(Ic.account_balance_wallet, Color(0xFF32B8C6))
+                                Text("Paid with", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                            }
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(PayMethod.UPI, PayMethod.CASH, PayMethod.CARD, PayMethod.BANK).forEach { method ->
+                                    Chip(
+                                        method.label,
+                                        { draft = draft.copy(method = if (draft.method == method) PayMethod.NONE else method) },
+                                        selected = draft.method == method,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Splitting a bill with friends: who paid, and who owes what.
+            if (draft.mode == "EXPENSE" && draft.settles == null) {
+                Gap(12.dp)
+                val payer = data.person(draft.payer)
+                val friends = draft.splitWith.mapNotNull { data.person(it) }
+                KGroup {
+                    val rows = when {
+                        draft.payer != null -> 1
+                        friends.isEmpty() -> 2
+                        else -> 3 + friends.size
+                    }
+                    SettingRow(0, rows, "Who paid", icon = Ic.group, iconColor = Color(0xFFEC4A63), value = payer?.name ?: "You", onClick = { pickPayer = true })
+                    if (draft.payer == null) {
+                        SettingRow(
+                            1, rows, "Split with",
+                            icon = Ic.diversity_3,
+                            iconColor = Color(0xFF7E57C2),
+                            value = when (friends.size) {
+                                0 -> "Nobody"
+                                1 -> friends.first().name
+                                else -> "${friends.size} friends"
+                            },
+                            onClick = { pickSplit = true },
+                        )
+                        if (friends.isNotEmpty()) {
+                            SwitchRow(2, rows, "Split equally", draft.equal, { draft = draft.copy(equal = it) }, subtitle = if (draft.equal) "Everyone, you included, pays the same" else "Tap a friend to type their share")
+                            friends.forEachIndexed { index, friend ->
+                                SettingRow(
+                                    3 + index, rows, friend.name,
+                                    subtitle = "owes you",
+                                    value = if (hidden) HIDDEN_AMOUNT else Money.format(shareMinor[friend.id] ?: 0L, draft.currency),
+                                    onClick = if (draft.equal) null else ({ askShare = friend.id }),
+                                )
+                            }
+                        }
+                    }
+                }
+                when {
+                    payer != null -> Foot("The amount above is your share. You owe ${payer.name} this much. It counts as your spending, but leaves the sheet's balance alone until you settle up under Friends.")
+                    friends.isNotEmpty() && amountMinor != null && !hidden -> Foot("Your own share is ${Money.format((amountMinor - lent).coerceAtLeast(0L), draft.currency)}. Friends owe you ${Money.format(lent, draft.currency)} in all.")
                 }
             }
 
@@ -681,6 +801,40 @@ fun ItemEditScreen(key: ItemRoute) {
             kind = FieldKind.MONEY,
             onConfirm = { typed -> draft = draft.copy(rateText = typed) },
             onDismiss = { askRate = false },
+        )
+    }
+    if (pickPayer) {
+        PayerSheet(
+            people = data.livePeople,
+            selectedId = draft.payer,
+            onPick = { id -> draft = draft.copy(payer = id, splitWith = if (id == null) draft.splitWith else emptyList()) },
+            onAdd = { name -> app.ledger.savePerson(Person(id = newId(), name = name)) },
+            onDismiss = { pickPayer = false },
+        )
+    }
+    if (pickSplit) {
+        SplitWithSheet(
+            people = data.livePeople,
+            selected = draft.splitWith,
+            onChange = { ids -> draft = draft.copy(splitWith = ids) },
+            onAdd = { name ->
+                val person = Person(id = newId(), name = name)
+                app.ledger.savePerson(person)
+                draft = draft.copy(splitWith = draft.splitWith + person.id)
+            },
+            onDismiss = { pickSplit = false },
+        )
+    }
+    val sharing = askShare
+    if (sharing != null) {
+        PromptDialog(
+            title = "${data.person(sharing)?.name ?: "Friend"}'s share",
+            label = "Amount in ${draft.currency}",
+            initial = draft.shares[sharing].orEmpty(),
+            kind = FieldKind.MONEY,
+            prefix = Money.symbol(draft.currency),
+            onConfirm = { typed -> draft = draft.copy(shares = draft.shares + (sharing to typed)) },
+            onDismiss = { askShare = null },
         )
     }
     val shown = viewing

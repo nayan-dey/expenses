@@ -30,7 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kharcha.app.core.model.Kind
 import com.kharcha.app.core.model.PeriodKind
 import com.kharcha.app.core.util.Dates
-import com.kharcha.app.domain.inSheet
+import com.kharcha.app.domain.isReal
+import com.kharcha.app.domain.own
 import com.kharcha.app.domain.settled
 import com.kharcha.app.domain.slices
 import com.kharcha.app.domain.titleOf
@@ -90,9 +91,9 @@ fun StatsScreen(key: StatsRoute) {
     val range = remember(period, from, to, now) { Dates.range(period, now, from, to) }
     val items = remember(data, sheet.id, range) { data.settled(sheet, range) }
     val parts = remember(items, kind, data.categories) { slices(items, sheet, kind, data) }
-    val relevant = remember(items, kind) { items.filter { it.kind == kind && !it.isTransfer } }
+    val relevant = remember(items, kind) { items.filter { it.kind == kind && it.isReal } }
     val total = parts.sumOf { it.amount }
-    val biggest = remember(relevant) { relevant.maxByOrNull { it.inSheet(sheet) } }
+    val biggest = remember(relevant) { relevant.maxByOrNull { it.own(sheet) } }
     // How many days the period has had so far, for the daily average.
     val days = remember(relevant, range, now) {
         val start = maxOf(range.from, relevant.minOfOrNull { it.at } ?: now)
@@ -102,7 +103,7 @@ fun StatsScreen(key: StatsRoute) {
     // "This month" also says how last month went.
     val before = remember(data, sheet.id, period, kind, now) {
         if (period != PeriodKind.THIS_MONTH) null else {
-            data.settled(sheet, Dates.range(PeriodKind.LAST_MONTH, now)).filter { it.kind == kind && !it.isTransfer }.sumOf { it.inSheet(sheet) }
+            data.settled(sheet, Dates.range(PeriodKind.LAST_MONTH, now)).filter { it.kind == kind && it.isReal }.sumOf { it.own(sheet) }
         }
     }
 
@@ -148,7 +149,7 @@ fun StatsScreen(key: StatsRoute) {
                 StatTile("A day", money(total / days, sheet.currency), Modifier.weight(1f), icon = Ic.today)
                 StatTile(
                     "Largest",
-                    if (biggest == null) "" else money(biggest.inSheet(sheet), sheet.currency),
+                    if (biggest == null) "" else money(biggest.own(sheet), sheet.currency),
                     Modifier.weight(1f),
                     icon = Ic.arrow_outward,
                 )

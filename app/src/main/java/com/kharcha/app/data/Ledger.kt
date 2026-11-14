@@ -2,6 +2,9 @@ package com.kharcha.app.data
 
 import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.model.Category
+import com.kharcha.app.core.model.Deposit
+import com.kharcha.app.core.model.Goal
+import com.kharcha.app.core.model.Person
 import com.kharcha.app.core.model.Item
 import com.kharcha.app.core.model.Kind
 import com.kharcha.app.core.model.Repeat
@@ -255,6 +258,77 @@ class Ledger(
     }
 
     // ---------------------------------------------------------------------------
+    // Friends
+    // ---------------------------------------------------------------------------
+
+    fun savePerson(person: Person) {
+        val time = now()
+        change { data ->
+            if (data.people.any { it.id == person.id }) {
+                data.copy(people = data.people.map { if (it.id == person.id) person.copy(editedAt = time) else it })
+            } else {
+                data.copy(people = data.people + person.copy(createdAt = time, editedAt = time))
+            }
+        }
+    }
+
+    /** Hides a friend. Their name stays on past bills. */
+    fun deletePerson(id: String) {
+        val time = now()
+        change { data -> data.copy(people = data.people.map { if (it.id == id) it.copy(deletedAt = time, editedAt = time) else it }) }
+    }
+
+    fun restorePerson(id: String) {
+        val time = now()
+        change { data -> data.copy(people = data.people.map { if (it.id == id) it.copy(deletedAt = null, editedAt = time) else it }) }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Goals and the daily habit
+    // ---------------------------------------------------------------------------
+
+    fun saveGoal(goal: Goal) {
+        val time = now()
+        change { data ->
+            if (data.goals.any { it.id == goal.id }) {
+                data.copy(goals = data.goals.map { if (it.id == goal.id) goal.copy(editedAt = time) else it })
+            } else {
+                data.copy(goals = data.goals + goal.copy(createdAt = time, editedAt = time))
+            }
+        }
+    }
+
+    fun deleteGoal(id: String) {
+        val time = now()
+        change { data -> data.copy(goals = data.goals.map { if (it.id == id) it.copy(deletedAt = time, editedAt = time) else it }) }
+    }
+
+    fun restoreGoal(id: String) {
+        val time = now()
+        change { data -> data.copy(goals = data.goals.map { if (it.id == id) it.copy(deletedAt = null, editedAt = time) else it }) }
+    }
+
+    /** Adds money to a goal (or takes the last addition back with a negative amount). */
+    fun deposit(goalId: String, amountMinor: Long) {
+        val time = now()
+        change { data ->
+            data.copy(goals = data.goals.map { if (it.id == goalId) it.copy(deposits = it.deposits + Deposit(time, amountMinor), editedAt = time) else it })
+        }
+    }
+
+    fun removeDeposit(goalId: String, at: Long) {
+        val time = now()
+        change { data ->
+            data.copy(goals = data.goals.map { if (it.id == goalId) it.copy(deposits = it.deposits.filter { deposit -> deposit.at != at }, editedAt = time) else it })
+        }
+    }
+
+    /** Ticks (or unticks) a day as "spent nothing", which keeps the streak going. */
+    fun setNoSpend(day: String, on: Boolean) {
+        change { data -> data.copy(noSpendDays = if (on) (data.noSpendDays + day).distinct().sorted() else data.noSpendDays - day) }
+    }
+
+    // ---------------------------------------------------------------------------
     // Trash
     // ---------------------------------------------------------------------------
 
@@ -271,6 +345,7 @@ class Ledger(
             data.copy(
                 sheets = data.sheets.filter { it.id !in deadSheets },
                 categories = data.categories.filter { it.id !in deadCategories },
+                goals = data.goals.filter { !expired(it.deletedAt) },
                 // An item whose category is gone for good becomes "no category".
                 items = liveItems.map { if (it.categoryId in deadCategories) it.copy(categoryId = null) else it },
             )
@@ -361,6 +436,9 @@ class Ledger(
                 sheets = fold(data.sheets, incoming.sheets, { it.id }, { it.editedAt }) { sheets++ },
                 categories = fold(data.categories, incoming.categories, { it.id }, { it.editedAt }) { categories++ },
                 items = fold(data.items, incoming.items, { it.id }, { it.editedAt }) { items++ },
+                people = fold(data.people, incoming.people, { it.id }, { it.editedAt }) { },
+                goals = fold(data.goals, incoming.goals, { it.id }, { it.editedAt }) { },
+                noSpendDays = (data.noSpendDays + incoming.noSpendDays).distinct().sorted(),
             )
             summary = MergeSummary(sheets, categories, items)
             merged

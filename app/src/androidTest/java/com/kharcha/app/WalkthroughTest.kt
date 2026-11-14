@@ -166,7 +166,8 @@ class WalkthroughTest {
         step("11 new item, keypad") {
             tapDesc("New item"); pause(1800)
             shot("11-new-item")
-            listOf("1", "2", "0", "+", "3", "5").forEach { tapExact(it) }
+            // No zero here: "0" is also what the empty amount box shows, and tapping that closes the keypad.
+            listOf("1", "2", "5", "+", "3", "5").forEach { tapExact(it) }
             pause(600)
             shot("12-new-item-sum")
         }
@@ -185,6 +186,32 @@ class WalkthroughTest {
         step("21 exchange rates") { tapDesc("More"); pause(1000); tapExact("Exchange rates"); pause(4000); shot("21-rates"); back() }
         step("22 select mode") { tapDesc("More"); pause(1000); tapExact("Select"); pause(1200); shot("22-select"); back() }
         step("23 edit sheet") { tapDesc("More"); pause(1000); tapExact("Edit sheet"); pause(1500); shot("23-sheet-edit"); back(); back() }
+        step("23a friends") {
+            tapDesc("Friends"); pause(1500); shot("23a-friends-empty")
+            tapText("Add a friend"); pause(1200)
+            type(0, "Rahul"); type(1, "rahul@upi"); closeKeyboard()
+            tapExact("Save"); pause(1200); shot("23b-friends")
+            tapText("Rahul"); pause(1500); shot("23c-friend")
+            back(); back()
+        }
+        step("23d split a bill") {
+            tapDesc("New item"); pause(1800)
+            listOf("9", "6").forEach { tapExact(it) }
+            tapDesc("Hide the keypad"); pause(700)
+            swipeUp()
+            tapExact("Split with"); pause(1200); tapExact("Rahul"); pause(700); shot("23d-split-with")
+            tapText("Split with 1"); pause(1000)
+            shot("23e-split-form")
+            tapDesc("Save"); pause(1800)
+        }
+        step("23f home cards, insights, habit") {
+            shot("23f-home-cards")
+            tapText("Where could you save"); pause(2000); shot("23g-insights"); swipeUp(); shot("23h-insights-more")
+            scrollAndTap("Ask Gemini"); pause(1500); shot("23i-ask-gemini"); device.pressBack(); pause(900)
+            back()
+            tapExact("Streak"); pause(2000); shot("23j-habit"); swipeUp(); shot("23k-goals")
+            back()
+        }
         step("24 settings") { tapDesc("Settings"); pause(1500); shot("24-settings"); swipeUp(); shot("25-settings-more"); swipeDown() }
         step("26 categories") {
             tapExact("Categories"); pause(1500); shot("26-categories")
@@ -198,15 +225,19 @@ class WalkthroughTest {
         step("31 import") { tapExact("Import"); pause(1500); shot("31-import"); back() }
         step("32 app icon") { scrollAndTap("App icon"); pause(1500); shot("32-app-icon"); back() }
         step("33 privacy") { scrollAndTap("Privacy"); pause(1500); shot("33-privacy"); back() }
+        step("33a reminders") { swipeDown(); swipeDown(); scrollAndTap("Reminders and backup"); pause(1500); shot("33a-reminders"); back() }
         step("34 dark theme") {
             swipeDown()
             scrollAndTap("Appearance"); pause(1500)
             tapExact("Dark"); pause(1500); shot("34-appearance-dark")
+            swipeUp(); shot("34a-appearance-more")
+            tapDesc("Teal"); pause(1200); shot("34b-appearance-teal")
+            swipeDown()
             back(); back(); pause(1500)
             shot("35-home-dark")
         }
         step("36 dark sheet") { tapText("Personal"); pause(2000); shot("36-sheet-dark"); swipeUp(); shot("37-sheet-list-dark"); back() }
-        step("38 new sheet form") { tapDesc("New sheet"); pause(1500); shot("38-new-sheet"); back() }
+        step("38 new sheet form") { tapText("New sheet"); pause(1500); shot("38-new-sheet"); back() }
 
         println("KHARCHA-WALKTHROUGH\n$report")
     }

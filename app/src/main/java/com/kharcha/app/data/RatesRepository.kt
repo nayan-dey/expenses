@@ -12,6 +12,17 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** How many units of `to` one unit of `from` is worth by these rates, or null if they do not say. Hand-set rates win. */
+fun Rates.between(from: String, to: String): Double? {
+    if (from == to) return 1.0
+    custom["$from>$to"]?.let { return it }
+    custom["$to>$from"]?.let { if (it > 0.0) return 1.0 / it }
+    val fromPerBase = perBase[from] ?: return null
+    val toPerBase = perBase[to] ?: return null
+    if (fromPerBase <= 0.0) return null
+    return toPerBase / fromPerBase
+}
+
 /**
  * Currency exchange rates. This is the ONLY part of Kharcha that uses the internet: it
  * downloads one small public file of rates. Nothing about the person or their money is sent.
@@ -26,15 +37,7 @@ class RatesRepository(private val file: JsonFile<Rates>, private val now: () -> 
     val busy = MutableStateFlow(false)
 
     /** How many units of `to` one unit of `from` is worth, or null if nobody knows. */
-    fun rate(from: String, to: String, rates: Rates = file.value): Double? {
-        if (from == to) return 1.0
-        rates.custom["$from>$to"]?.let { return it }
-        rates.custom["$to>$from"]?.let { if (it > 0.0) return 1.0 / it }
-        val fromPerBase = rates.perBase[from] ?: return null
-        val toPerBase = rates.perBase[to] ?: return null
-        if (fromPerBase <= 0.0) return null
-        return toPerBase / fromPerBase
-    }
+    fun rate(from: String, to: String, rates: Rates = file.value): Double? = rates.between(from, to)
 
     fun isCustom(from: String, to: String, rates: Rates = file.value): Boolean =
         rates.custom.containsKey("$from>$to") || rates.custom.containsKey("$to>$from")

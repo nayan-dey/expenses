@@ -8,6 +8,10 @@
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- The optional daily reminder: showing a notification, and setting the alarm again after a restart. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Receipt photos are taken by the phone's own camera app, so no camera permission is needed. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -37,6 +41,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Kharcha.Starting" />
 
@@ -123,6 +128,44 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <!-- The daily wake-up for the reminder and the automatic backup (platform/Reminders.kt). -->
+        <receiver
+            android:name=".platform.DailyReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".platform.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Home-screen widgets (platform/Widgets.kt). -->
+        <receiver
+            android:name=".platform.TodayWidget"
+            android:exported="true"
+            android:label="@string/widget_today">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_info" />
+        </receiver>
+
+        <receiver
+            android:name=".platform.MonthWidget"
+            android:exported="true"
+            android:label="@string/widget_month">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_month_info" />
+        </receiver>
 
         <!-- Lets the camera app write a receipt photo into our folder, and lets us share exported files. -->
         <provider

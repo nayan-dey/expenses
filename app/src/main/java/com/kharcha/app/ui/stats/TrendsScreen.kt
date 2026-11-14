@@ -71,9 +71,13 @@ fun TrendsScreen(key: TrendsRoute) {
 
     // The balance at the end of each bar, counting everything that came before the first bar too.
     val balances = remember(items, points) {
-        var running = items.filter { it.at < points.first().start }.sumOf { if (it.kind == Kind.EXPENSE) -it.inSheet(sheet) else it.inSheet(sheet) }
-        points.map { step ->
-            running += step.net
+        // The balance is the cash view: everything that reached or left the pocket, transfers included.
+        val cash = items.filter { it.payer == null }
+        fun signed(item: com.kharcha.app.core.model.Item): Long = if (item.kind == Kind.EXPENSE) -item.inSheet(sheet) else item.inSheet(sheet)
+        var running = cash.filter { it.at < points.first().start }.sumOf { signed(it) }
+        points.mapIndexed { index, step ->
+            val end = points.getOrNull(index + 1)?.start ?: Long.MAX_VALUE
+            running += cash.filter { it.at >= step.start && it.at < end }.sumOf { signed(it) }
             running
         }
     }

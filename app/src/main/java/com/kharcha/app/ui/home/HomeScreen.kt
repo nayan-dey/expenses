@@ -34,6 +34,14 @@ import com.kharcha.app.core.model.Sheet
 import com.kharcha.app.core.model.SheetSort
 import com.kharcha.app.core.util.Currencies
 import com.kharcha.app.core.util.Dates
+import com.kharcha.app.data.between
+import com.kharcha.app.domain.quickLook
+import com.kharcha.app.ui.components.IconTile
+import com.kharcha.app.ui.components.KCard
+import com.kharcha.app.ui.habit.StreakTree
+import com.kharcha.app.ui.nav.HabitRoute
+import com.kharcha.app.ui.nav.InsightsRoute
+import com.kharcha.app.ui.nav.PeopleRoute
 import com.kharcha.app.domain.headline
 import com.kharcha.app.domain.matchesSearch
 import com.kharcha.app.domain.overview
@@ -107,6 +115,7 @@ fun HomeScreen() {
     val overview = remember(data, rates, preferred, now) {
         data.overview(data.liveSheets, preferred, now) { from -> app.rates.rate(from, preferred, rates) }
     }
+    val look = remember(data, rates, preferred, now) { data.quickLook(now, preferred) { from -> rates.between(from, preferred) } }
     val liveItems = remember(data.items) { data.items.count { it.deletedAt == null } }
     val remind = liveItems >= 10 && now - settings.lastBackupAt > BACKUP_REMINDER_MS
     val newest = remember(data.sheets) { data.liveSheets.maxByOrNull { it.editedAt } }
@@ -226,6 +235,74 @@ fun HomeScreen() {
                                 )
                             }
                         }
+                    }
+
+                    // The daily check: the streak and its tree, friends, and where to save.
+                    item(key = "today") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            KCard(Modifier.weight(1f), onClick = { nav.go(HabitRoute) }, padding = 14.dp) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    StreakTree(look.streak.current, size = 54.dp)
+                                    Column {
+                                        Eyebrow("Streak")
+                                        Text(
+                                            if (look.streak.current == 1) "1 day" else "${look.streak.current} days",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            if (look.streak.today) "Done today" else "Log today",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (look.streak.today) KharchaTheme.extras.income else scheme.tertiary,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                            }
+                            KCard(Modifier.weight(1f), onClick = { nav.go(PeopleRoute) }, padding = 14.dp) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    IconTile(Ic.group, scheme.primary, size = 44.dp)
+                                    Column {
+                                        Eyebrow("Friends")
+                                        Text(
+                                            when {
+                                                look.owedToYou > 0L -> money(look.owedToYou, preferred)
+                                                look.youOwe > 0L -> money(look.youOwe, preferred)
+                                                else -> "All square"
+                                            },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            when {
+                                                look.owedToYou > 0L -> "owed to you"
+                                                look.youOwe > 0L -> "you owe"
+                                                data.livePeople.isEmpty() -> "Split a bill"
+                                                else -> "Nothing owed"
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = scheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    item(key = "insights") {
+                        Banner(
+                            title = "Where could you save?",
+                            subtitle = if (look.month > 0L) "This month so far: ${money(look.month, preferred)} spent. See what stands out." else "Log a few days and suggestions appear here.",
+                            icon = Ic.insights,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            kind = CardKind.SECONDARY,
+                            onClick = { nav.go(InsightsRoute) },
+                        )
                     }
 
                     if (remind) {
@@ -348,7 +425,7 @@ fun HomeScreen() {
                 },
                 toggled = settings.sensitive,
             )
-            IconBtn(Ic.description, "New sheet", { nav.go(SheetEditRoute()) })
+            IconBtn(Ic.group, "Friends", { nav.go(PeopleRoute) })
         }
     }
 

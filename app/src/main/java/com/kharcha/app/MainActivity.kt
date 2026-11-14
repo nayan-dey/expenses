@@ -1,5 +1,6 @@
 package com.kharcha.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
         val container = container
         // Keep the splash screen until the data file has been read.
         splash.setKeepOnScreenCondition { !container.loaded.value }
+        route(intent)
         setContent {
             KharchaRoot(
                 container = container,
@@ -38,6 +40,18 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
+    }
+
+    /** A widget or a notification was tapped while the app was already open. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        route(intent)
+    }
+
+    /** Passes on where a tap wants to go ("new item", "insights"); the root screen does the moving. */
+    private fun route(intent: Intent?) {
+        val action = intent?.action ?: return
+        if (action.startsWith("com.kharcha.app.")) container.pendingAction.value = action
     }
 
     override fun onStart() {

@@ -49,3 +49,14 @@ sealed interface Route : NavKey
 @Serializable data object PrivacyRoute : Route
 @Serializable data object PrintRoute : Route
 @Serializable data object AboutRoute : Route
+
+/** Friends and who owes whom. */
+@Serializable data object PeopleRoute : Route
+@Serializable data class PersonRoute(val personId: String) : Route
+
+/** "Where could I save": insights for the week or the month. */
+@Serializable data object InsightsRoute : Route
+
+/** The daily streak, the tree, and savings goals. */
+@Serializable data object HabitRoute : Route
+@Serializable data object RemindersRoute : Route

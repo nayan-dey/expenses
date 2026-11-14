@@ -26,6 +26,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import com.kharcha.app.platform.Launch
+import com.kharcha.app.ui.habit.HabitScreen
+import com.kharcha.app.ui.insights.InsightsScreen
+import com.kharcha.app.ui.nav.HabitRoute
+import com.kharcha.app.ui.nav.InsightsRoute
+import com.kharcha.app.ui.nav.PeopleRoute
+import com.kharcha.app.ui.nav.PersonRoute
+import com.kharcha.app.ui.nav.RemindersRoute
+import com.kharcha.app.ui.people.PeopleScreen
+import com.kharcha.app.ui.people.PersonScreen
+import com.kharcha.app.ui.settings.RemindersScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +100,7 @@ import com.kharcha.app.ui.sheet.SheetScreen
 import com.kharcha.app.ui.stats.StatsScreen
 import com.kharcha.app.ui.stats.TrendsScreen
 import com.kharcha.app.ui.theme.KharchaTheme
+import com.kharcha.app.ui.theme.Look
 
 /**
  * The top of the UI tree. It turns Settings into a theme, shows the welcome screen on first
@@ -130,7 +143,16 @@ fun KharchaRoot(container: AppContainer, onThemeResolved: (dark: Boolean) -> Uni
     val nav = navViewModel.navigator
     val messenger = navViewModel.messenger
 
-    KharchaTheme(dark = dark, dynamicColor = settings.dynamicColor, sensitive = settings.sensitive) {
+    val look = Look(
+        dark = dark,
+        dynamicColor = settings.dynamicColor,
+        accent = settings.accent,
+        pureBlack = settings.pureBlack,
+        font = settings.font,
+        textSize = settings.textSize,
+        corners = settings.corners,
+    )
+    KharchaTheme(look = look, sensitive = settings.sensitive) {
         CompositionLocalProvider(
             LocalContainer provides container,
             LocalNav provides nav,
@@ -143,6 +165,23 @@ fun KharchaRoot(container: AppContainer, onThemeResolved: (dark: Boolean) -> Uni
                 color = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
+                val showing = settings.onboarded && !(settings.appLock && locked)
+                // A tapped widget or notification asked for a particular screen: go there once the app is open.
+                val action by container.pendingAction.collectAsStateWithLifecycle()
+                LaunchedEffect(action, showing) {
+                    val wanted = action
+                    if (wanted != null && showing) {
+                        when (wanted) {
+                            Launch.NEW_ITEM -> {
+                                val sheet = container.ledger.current.liveSheets.maxByOrNull { it.editedAt }
+                                if (sheet != null) nav.go(ItemRoute(sheet.id))
+                            }
+                            Launch.INSIGHTS -> nav.go(InsightsRoute)
+                            Launch.HABIT -> nav.go(HabitRoute)
+                        }
+                        container.pendingAction.value = null
+                    }
+                }
                 when {
                     !settings.onboarded -> OnboardingScreen()
                     settings.appLock && locked -> LockScreen()
@@ -190,6 +229,11 @@ private fun MainScreens(nav: Navigator, messenger: Messenger) {
                     entry<PrivacyRoute> { PrivacyScreen() }
                     entry<PrintRoute> { PrintScreen() }
                     entry<AboutRoute> { AboutScreen() }
+                    entry<PeopleRoute> { PeopleScreen() }
+                    entry<PersonRoute> { key -> PersonScreen(key) }
+                    entry<InsightsRoute> { InsightsScreen() }
+                    entry<HabitRoute> { HabitScreen() }
+                    entry<RemindersRoute> { RemindersScreen() }
                 },
             )
             // Leave room for the keyboard, or for the phone's own gesture bar.

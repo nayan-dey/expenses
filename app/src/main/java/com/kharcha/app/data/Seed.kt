@@ -63,9 +63,9 @@ object Seed {
             else -> 1.0
         }
         fun amount(base: Double): Long = Money.toMinor(BigDecimal.valueOf(Math.round(base * unit).toDouble()), currency)
-        val personal = Sheet(id = newId(), name = "Personal", currency = currency, monthlyBudgetMinor = amount(900.0), order = 0)
+        val personal = Sheet(id = newId(), name = "Personal", currency = currency, monthlyBudgetMinor = amount(900.0), order = 0, createdAt = now, editedAt = now)
         val tripCurrency = if (currency == "USD") "EUR" else "USD"
-        val trip = Sheet(id = newId(), name = "Weekend trip", currency = currency, order = 1)
+        val trip = Sheet(id = newId(), name = "Weekend trip", currency = currency, order = 1, createdAt = now - 1000, editedAt = now - 1000)
         val today = Dates.dateOf(now)
 
         data class Line(val category: String, val notes: List<String>, val merchant: String, val low: Double, val high: Double, val every: Int)
