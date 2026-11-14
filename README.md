@@ -24,6 +24,12 @@ over older ones and keep your data.
 - **Categories** with icons and colours, suggested as you type a note.
 - **Pending and repeating items**, receipt **pictures**, **search** and **filters**.
 - **Stats** by category, **trends** over time, a monthly **budget** per sheet.
+- **Friends**: split a bill, see who owes whom, settle up, pay back through your UPI app.
+- **Insights**: where the last week or month went and what a small change would save, with a
+  summary you can hand to Gemini.
+- **A daily habit**: a streak drawn as a tree that grows, a daily reminder, saving and investing
+  goals, and two home-screen widgets.
+- **Your look**: light, dark or pure black, six accent colours, four typefaces, text size.
 - **Export and import** CSV, **backup** everything to one file, **share** a sheet as a file and
   merge it on another phone.
 - **Privacy**: app lock, hidden amounts, blocked screenshots. The only thing the app goes online

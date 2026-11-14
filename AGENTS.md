@@ -3,7 +3,8 @@
 This is the single source of truth about this repo for any AI agent or new contributor.
 `CLAUDE.md` only imports this file, so edit this one.
 
-Last verified: 2026-11-14, against the first commit on `main`.
+Last verified: 2026-11-14, against `main` after the second batch of features (friends, insights,
+habit, reminders, widgets, look options).
 
 ## 1. Keep this file true
 
@@ -88,15 +89,17 @@ screenshots on a cloud emulator. Nothing has been tried on a real phone by an ag
 | App lock (fingerprint, face or PIN), block screenshots, sensitive mode | Written, lock cannot be tested on an emulator |
 | Light and dark theme, phone (wallpaper) colours, haptics | Written |
 | Six launcher icons to choose from | Written |
-| Friends and split bills (who owes whom), settle up through UPI | **Planned** |
-| "Paid by" tag on items (UPI, cash, card) | **Planned** |
-| Home-screen widgets | **Planned** |
-| Daily reminder notification | **Planned** |
-| Weekly and monthly "where you could save" insights | **Planned** |
-| "Ask Gemini": share a summary of your spending | **Planned** |
-| Daily streak with a growing tree | **Planned** |
-| Savings and investing goal tracker | **Planned** |
-| Daily auto-export to the Downloads folder | **Planned** |
+| Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Written |
+| Pay a friend back through any UPI app (amount and UPI address filled in) | Written, cannot be tested on an emulator |
+| "Paid with" on items: UPI, cash, card, bank | Written |
+| Insights: last 7 or 30 days against the stretch before, with what a change is worth | Written |
+| "Ask Gemini": a summary you read first, then share with Gemini or any app | Written, the hand-over cannot be tested on an emulator |
+| Daily streak drawn as a tree that grows through six stages | Written |
+| Saving and investing goals: target, monthly amount, "done for this month" | Written |
+| Daily reminder notification (weekly round-up on Sundays, monthly on the 1st) | Written, timing cannot be tested on an emulator |
+| Daily automatic backup to Downloads/Kharcha (Android 10 and newer) | Written, not seen running |
+| Two home-screen widgets: "today" and "this month" | Written, not seen on a home screen |
+| Look: four typefaces, text size, six accent colours, pure black, corner style | Written |
 | Receipt scanning that fills in the form | Not started (see section 10) |
 | Live sync between phones | Not started (see section 10) |
 | Languages other than English | Not started |
@@ -112,6 +115,12 @@ Do not reopen these unless the owner does.
   database, no account, no sign-up and no server. The app must be fully usable offline, forever.
 - **Everything is unlocked.** Features the iOS app sells as "Pro" are simply part of the app.
   There are no purchases and no locked features.
+- **It is built around how the owner lives.** He pays almost everything by UPI, goes out with
+  the same five or six friends and loses track of who owes whom, and spends on food and friends
+  instead of saving. The app must make splitting a bill quick, show where money could be saved,
+  and build a daily habit (streak, tree, reminder, goals) that leads towards saving and investing.
+- **No investment advice.** The app tracks goals and says how much could be set aside. It never
+  names a fund, a share or a product.
 - **Match the features, not the artwork.** Kharcha has its own name, icon, colours and layout.
   Do not copy the iOS app's branding or screens pixel for pixel.
 - **Builds never run on the owner's laptop.** No JDK or Android SDK is installed there and none
@@ -129,10 +138,11 @@ The identity is **"iris and marigold on ink"**. Tokens live in
   an iris "hero" card. **Marigold** is the accent for things waiting for attention (pending, a
   budget nearly used). Money in is mint green, money out is coral; red is kept for delete and
   "over budget". `KharchaExtras` holds the colours Material has no role for.
-- **Type** (`Type.kt`): one variable font, Plus Jakarta Sans (`res/font`), chosen because it
-  draws ₹ and most other currency signs itself. Use `MaterialTheme.typography` or
-  `KharchaType` (hero, figure, amount, eyebrow, key). No one-off sizes, except the hero amount,
-  which shrinks by length so it always fits one line.
+- **Type** (`Type.kt`): variable fonts in `res/font`. Plus Jakarta Sans is the default; Manrope,
+  Figtree and Space Grotesk can be chosen. All four draw ₹ themselves, which is why they were
+  picked. Use `MaterialTheme.typography` or `KharchaType` (hero, figure, amount, eyebrow, key);
+  both follow the chosen typeface. No one-off sizes, except the hero amount, which shrinks by
+  length so it always fits one line. Never name a font family in a screen.
 - **Shape** (`Theme.kt`): soft and round, radii 8 / 14 / 22 / 28 / 36. A sheet is shown as its
   first letter on a shape from Material's shape library; a category is a coloured circle with
   an icon.
@@ -140,14 +150,24 @@ The identity is **"iris and marigold on ink"**. Tokens live in
   the ring chart sweeps round, the shape in the hero card turns slowly.
 - **Phone colours**: an optional setting swaps iris for the wallpaper palette (Android 12 and
   newer). Iris is the default.
+- **Look options** (Settings, Appearance; `Look` in `Theme.kt`): theme (automatic, light, dark),
+  pure black for the dark theme, six accent colours, four typefaces plus the phone's own, four
+  text sizes, three corner styles. The other accents are not separate palettes: `withAccent`
+  turns every iris-tinted colour of the scheme to another hue, so one scheme stays the source.
+- **The tree** (`ui/habit/Tree.kt`): the streak as a plant in six stages, at 0, 1, 3, 7, 14 and
+  30 days. It is an illustration, drawn by hand like the charts.
+- **Widgets** cannot use Compose or the theme: they are XML layouts (`res/layout/widget_*.xml`)
+  in fixed brand colours, filled in by `platform/Widgets.kt`.
 - **The mark**: a ring chart with one slice lifted out. Launcher icon:
   `res/drawable/ic_launcher_foreground*.xml`; in the app: `KharchaLogo` in `Basics.kt`.
 
 Rules:
 
 - Use Google's real Material components. `ui/components/` only picks a component and fills its
-  slots; it draws nothing by hand except the three charts and the logo, which Material has no
-  component for.
+  slots; it draws nothing by hand except the three charts, the logo and the streak tree, which
+  Material has no component for.
+- Inside a list operation (`map`, `joinToString`, `remember { }`) a composable such as `money()`
+  cannot be called. Read `LocalSensitive.current` once outside and use `Money.format` inside.
 - Use the Expressive version where one exists: `HorizontalFloatingToolbar` with its FAB (the
   bar at the bottom of home and of a sheet), buttons and icon buttons with `shapes`,
   `ToggleButton` groups, `SegmentedListItem`, `TopAppBar` with subtitle,
@@ -176,7 +196,14 @@ One Gradle project at the repo root, single `app` module, package and app id `co
   `rememberSaveable` (with `jsonSaver` for whole objects). The only ViewModel is `NavViewModel`,
   which keeps the back stack and the snackbar host across rotation.
 - **One network call.** `data/RatesRepository.kt` downloads exchange rates. Nothing else uses
-  the internet and nothing is ever uploaded. Keep it that way.
+  the internet and nothing is ever uploaded. Keep it that way. ("Ask Gemini" and "Pay by UPI"
+  hand text to another app through Android's share and view intents, when the person taps them.)
+- **Background work without a server**: one daily alarm (`platform/Reminders.kt`, `AlarmManager`,
+  inexact, no special permission). `DailyReceiver` calls `AppContainer.dailyTick`, which fills
+  in repeats, writes the automatic backup, posts the reminder, redraws the widgets and sets the
+  next alarm. `BootReceiver` sets the alarm again after a restart.
+- **Taps from outside** (a widget, a notification) reach `MainActivity` as an intent action
+  listed in `platform/Launch`; `KharchaRoot` then opens the right screen.
 
 | Folder (under `app/src/main/java/com/kharcha/app/`) | Job |
 |---|---|
@@ -186,8 +213,9 @@ One Gradle project at the repo root, single `app` module, package and app id `co
 | `data/Ledger.kt` | The rules for changing sheets, categories and items |
 | `data/Exchange.kt` | Backup, shared sheet, CSV out and in |
 | `data/RatesRepository.kt`, `ImageStore.kt`, `Seed.kt` | Exchange rates; receipt pictures; default categories and sample data |
-| `domain/Summaries.kt` | Pure sums: totals, day groups, filters, search, stats, trends, budget |
-| `platform/` | Android-only bits: app lock, launcher icon switch, printing, sharing |
+| `domain/Summaries.kt` | Pure sums: totals, day groups, filters, search, stats, trends, budget, who owes whom, the streak |
+| `domain/Insights.kt` | The "where could I save" rules, the text for Ask Gemini, the quick look used by home, widgets and the reminder |
+| `platform/` | Android-only bits: app lock, launcher icon switch, printing, sharing, the daily alarm and notification (`Reminders`, `Nudges`), automatic backup (`AutoExport`), widgets (`Widgets`) |
 | `ui/<screen>/` | One folder per group of screens |
 | `ui/components/`, `ui/theme/`, `ui/icons/` | The design system |
 | `ui/nav/` | Routes (one key per screen), the `Navigator`, snackbar messages |
@@ -207,7 +235,7 @@ Three JSON files in the app's private folder, each wrapped by a `JsonFile`:
 
 | File | Holds |
 |---|---|
-| `kharcha.json` | `AppData`: sheets, categories, items |
+| `kharcha.json` | `AppData`: sheets, categories, items, friends, goals, "nothing spent" days |
 | `settings.json` | `Settings` |
 | `rates.json` | `Rates`: downloaded and hand-set exchange rates |
 
@@ -229,6 +257,22 @@ Pictures are JPEG files in `images/` beside them.
   `transferId`. They are always saved, changed and deleted together. Stats and trends leave
   transfers out; a sheet's balance counts them.
 - **Pending items** are listed under "Pending" and left out of every total.
+- **Two views of money.** `totals()` is the cash view: what really left or reached the pocket.
+  `spendTotals()` and `Item.own()` are the spending view: what something cost YOU. Sheet
+  balances use the cash view; stats, trends, budgets and insights use the spending view.
+- **Split bills.** On an expense you paid, `splits` lists what each friend owes back; your own
+  share is the rest. The cash view counts the full amount, the spending view only your share.
+- **A bill a friend paid** has `payer` set and its amount is your share. It counts as spending
+  but is left out of the cash view, because nothing has left your pocket yet.
+- **Settling up** is an item with `settles` set (income = they paid you, expense = you paid
+  them). It moves the cash balance and nothing else: like a transfer, it is not spending or
+  income. `Item.isMovement` is true for both transfers and settle-ups.
+- **Who owes whom** is never stored. `AppData.dues()` works it out from items every time:
+  plus their share of bills you paid, minus your share of bills they paid, adjusted by
+  repayments, per currency.
+- **The streak** is not stored either. A day counts when an item was created on it
+  (`Item.createdAt`) or it is listed in `noSpendDays`. `AppData.streak()` counts back from today.
+- **Goals** only keep count (`Goal.deposits`). They do not move money between sheets.
 - **Repeats**: exactly one item per chain carries the `repeat` rule. When the app opens,
   `Ledger.materializeRepeats` writes the copies that came due and hands the rule to the newest.
 - **Ids are random UUIDs** made on the phone, except the default categories, which have fixed
@@ -291,7 +335,12 @@ Remove each one when it is answered, and record the answer in the right section.
 4. **CSV from the iOS app.** The importer matches column names loosely, but it has not been
    tried with a real export from the iOS app.
 5. **UPI.** Payments could be logged automatically by reading bank SMS, but that needs a
-   sensitive permission. Until the owner asks for it, UPI is a manual tag (planned).
+   sensitive permission. Until the owner asks for it, UPI is a tag you set on the item.
+7. **Smarter insights.** The rules in `domain/Insights.kt` are fixed sums. Which categories count
+   as "essential" is a fixed list of the default category ids; it should become a per-category
+   switch if the owner's own categories are judged wrongly.
+8. **Widgets follow the theme?** They use fixed brand colours. Following light and dark, or the
+   chosen accent, needs separate layouts or Glance.
 6. **Shrinking the APK.** R8 is off (`isMinifyEnabled = false`). Turn it on once the app has
    been used on real phones.
 
@@ -299,5 +348,7 @@ Remove each one when it is answered, and record the answer in the right section.
 
 Newest first. One line per change to this file.
 
+- 2026-11-14: Second batch built: friends and splits, paid-with, insights, Ask Gemini, streak
+  tree, goals, reminder, automatic backup, widgets, look options. Sections 3 to 7 and 10 updated.
 - 2026-11-14: File created with the first version of the app. Second batch of features (friends,
   widgets, reminders, insights, streak, goals, auto-export) recorded as planned.
