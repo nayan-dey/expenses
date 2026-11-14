@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_background">#FBF8FF</color>
+    <color name="icon_iris">#565EF0</color>
+    <color name="icon_ink">#111118</color>
+    <color name="icon_coral">#F2604F</color>
+    <color name="icon_mint">#17A673</color>
+    <color name="icon_marigold">#FFC940</color>
+    <color name="icon_blueprint">#1F5EEA</color>
+</resources>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Kharcha is local first: everything is stored on this phone and there is no account or
+      server. The app goes online for ONE thing only: downloading currency exchange rates
+      (data/RatesRepository.kt). Nothing is ever uploaded. Rates can be switched off in the app.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Receipt photos are taken by the phone's own camera app, so no camera permission is needed. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".KharchaApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/backup_rules"
+        android:fullBackupContent="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@style/Theme.Kharcha.Starting">
+
+        <!--
+          The one window of the app. It has no launcher entry of its own: the six
+          activity-alias entries below are the launcher icons, and exactly one is enabled
+          at a time (platform/AppIcons.kt switches them). That is how "App icon" works.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Kharcha.Starting" />
+
+        <activity-alias
+            android:name=".IconIris"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconInk"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_ink"
+            android:roundIcon="@mipmap/ic_launcher_ink"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconCoral"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_coral"
+            android:roundIcon="@mipmap/ic_launcher_coral"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconMint"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_mint"
+            android:roundIcon="@mipmap/ic_launcher_mint"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconMarigold"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_marigold"
+            android:roundIcon="@mipmap/ic_launcher_marigold"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconBlueprint"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_blueprint"
+            android:roundIcon="@mipmap/ic_launcher_blueprint"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Lets the camera app write a receipt photo into our folder, and lets us share exported files. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

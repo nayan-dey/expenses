@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Receipt photos kept with the data. -->
+    <files-path name="images" path="images/" />
+    <!-- Exports waiting to be shared. Android may clear this folder at any time. -->
+    <cache-path name="share" path="share/" />
+</paths>
