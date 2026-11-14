@@ -11,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.Saver
@@ -21,6 +23,12 @@ import com.kharcha.app.ui.nav.LocalContainer
 import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
 
+/**
+ * How far the screen has scrolled. [AppBar] reads this to stay pinned at the top while the
+ * rest of the page scrolls underneath it.
+ */
+val LocalScreenScroll = compositionLocalOf<ScrollState?> { null }
+
 /** The frame every scrolling screen sits in: full size, below the status bar, scrolls vertically. */
 @Composable
 fun ScreenColumn(
@@ -28,15 +36,17 @@ fun ScreenColumn(
     scroll: ScrollState = rememberScrollState(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .statusBarsPadding()
-            .verticalScroll(scroll)
-            .padding(bottom = 24.dp),
-        content = content,
-    )
+    CompositionLocalProvider(LocalScreenScroll provides scroll) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .statusBarsPadding()
+                .verticalScroll(scroll)
+                .padding(bottom = 24.dp),
+            content = content,
+        )
+    }
 }
 
 /** The current time, refreshed every minute so "today" rolls over while the app is open. */
