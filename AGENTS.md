@@ -58,48 +58,50 @@ case, but every currency works.
 One branch, `main`, in `nayan-dey/expenses` (a **public** repo). The working copy is at
 `~/Documents/safaguardd/nayan-reverse-eng-apps/kharcha`.
 
-"Written" means the code exists and compiled. "Seen" means it was seen working in walkthrough
-screenshots on a cloud emulator. Nothing has been tried on a real phone by an agent.
+"Written" means the code exists and compiled. "Seen" means its screens were seen in walkthrough
+screenshots on a cloud emulator (the last full walkthrough: 2026-11-14, 37 of 39 steps reached
+their screens, no crash). "Seen" is about screens drawing correctly with sample data, not about
+every button having been pressed. Nothing has been tried on a real phone by an agent.
 
 | Feature | State |
 |---|---|
-| Sheets: name, currency, total balance or spent, total period, per-sheet form options | Written |
-| Sort sheets (manual, edited, created, name), collapse the list | Written |
-| All sheets added up in the preferred currency (home hero card) | Written |
-| Items: expense, income, transfer between sheets | Written |
-| Amount keypad with a calculator (+ − × ÷) | Written |
+| Sheets: name, currency, total balance or spent, total period, per-sheet form options | Seen |
+| Sort sheets (manual, edited, created, name), collapse the list | Seen |
+| All sheets added up in the preferred currency (home hero card) | Seen |
+| Items: expense, income, transfer between sheets | Seen |
+| Amount keypad with a calculator (+ − × ÷) | Seen |
 | Any currency per item, exchange rate frozen on the item, rate editable per item | Written |
 | Exchange rates: downloaded, hand-set rates, converter screen | Written |
-| Categories: icon (about 190 to choose from), colour, expense or income | Written |
-| Category suggestions on the item form (by note, then most used) | Written |
+| Categories: icon (about 190 to choose from), colour, expense or income | Seen |
+| Category suggestions on the item form (by note, then most used) | Seen |
 | Merchant, with past merchants offered | Written |
-| Pending items (kept out of totals, own tab) | Written |
+| Pending items (kept out of totals, own tab) | Seen |
 | Repeating items (daily to yearly), filled in when the app opens | Written |
 | Pictures on items (camera or gallery), viewer, share | Written |
-| Search (one sheet, or every sheet from home) and filters | Written |
+| Search (one sheet, or every sheet from home) and filters | Seen |
 | Select several items: delete, move to another sheet, change category, pending | Written |
-| Monthly budget per sheet with a progress bar | Written |
-| Stats: ring chart by category, daily average, largest, compared with last month | Written |
-| Trends: bars by day, week, month, year; balance over time | Written |
+| Monthly budget per sheet with a progress bar | Seen |
+| Stats: ring chart by category, daily average, largest, compared with last month | Seen |
+| Trends: bars by day, week, month, year; balance over time | Seen |
 | CSV export (optionally a ZIP with pictures) and CSV import with category review | Written |
 | Backup to one file, restore, and merge (latest edit wins) | Written |
 | Share one sheet as a file, merge it on another phone | Written |
-| Trash for sheets, categories and items; empties itself after 30 days | Written |
+| Trash for sheets, categories and items; empties itself after 30 days | Seen |
 | Print a sheet or save it as PDF | Written, cannot be tested on an emulator |
 | App lock (fingerprint, face or PIN), block screenshots, sensitive mode | Written, lock cannot be tested on an emulator |
-| Light and dark theme, phone (wallpaper) colours, haptics | Written |
+| Light and dark theme, phone (wallpaper) colours, haptics | Seen |
 | Six launcher icons to choose from | Written |
-| Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Written |
+| Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Seen |
 | Pay a friend back through any UPI app (amount and UPI address filled in) | Written, cannot be tested on an emulator |
-| "Paid with" on items: UPI, cash, card, bank | Written |
-| Insights: last 7 or 30 days against the stretch before, with what a change is worth | Written |
+| "Paid with" on items: UPI, cash, card, bank | Seen |
+| Insights: last 7 or 30 days against the stretch before, with what a change is worth | Seen |
 | "Ask Gemini": a summary you read first, then share with Gemini or any app | Written, the hand-over cannot be tested on an emulator |
-| Daily streak drawn as a tree that grows through six stages | Written |
-| Saving and investing goals: target, monthly amount, "done for this month" | Written |
+| Daily streak drawn as a tree that grows through six stages | Seen |
+| Saving and investing goals: target, monthly amount, "done for this month" | Seen |
 | Daily reminder notification (weekly round-up on Sundays, monthly on the 1st) | Written, timing cannot be tested on an emulator |
 | Daily automatic backup to Downloads/Kharcha (Android 10 and newer) | Written, not seen running |
 | Two home-screen widgets: "today" and "this month" | Written, not seen on a home screen |
-| Look: four typefaces, text size, six accent colours, pure black, corner style | Written |
+| Look: four typefaces, text size, six accent colours, pure black, corner style | Seen |
 | Receipt scanning that fills in the form | Not started (see section 10) |
 | Live sync between phones | Not started (see section 10) |
 | Languages other than English | Not started |

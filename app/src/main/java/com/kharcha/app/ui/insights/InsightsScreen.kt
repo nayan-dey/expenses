@@ -109,7 +109,7 @@ fun InsightsScreen() {
             Gap(8.dp)
             Text(
                 if (report.potential > 0L) {
-                    "more every ${if (days == 7) "week" else "month"} with the two small changes below. Over a year that is ${show(report.potential * (if (days == 7) 52 else 12))}."
+                    "more every ${if (days == 7) "week" else "month"} with the small changes below. Over a year that is ${show(report.potential * (if (days == 7) 52 else 12))}."
                 } else {
                     "Log a few more days and suggestions will appear here."
                 },
@@ -228,14 +228,21 @@ private fun AskSheet(prompt: String, hidden: Boolean, onDismiss: () -> Unit) {
                 Text(prompt, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Btn(
+            "Open Gemini",
+            { send(true) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+            icon = Ic.auto_awesome,
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Btn("Open Gemini", { send(true) }, modifier = Modifier.weight(1f), icon = Ic.auto_awesome)
-            Btn("Other app", { send(false) }, icon = Ic.share, style = BtnStyle.TONAL)
+            Btn("Other app", { send(false) }, modifier = Modifier.weight(1f), icon = Ic.share, style = BtnStyle.TONAL)
             Btn(
                 "Copy",
                 {
@@ -244,6 +251,7 @@ private fun AskSheet(prompt: String, hidden: Boolean, onDismiss: () -> Unit) {
                     messenger.show("Copied")
                     onDismiss()
                 },
+                modifier = Modifier.weight(1f),
                 icon = Ic.content_copy,
                 style = BtnStyle.TONAL,
             )
