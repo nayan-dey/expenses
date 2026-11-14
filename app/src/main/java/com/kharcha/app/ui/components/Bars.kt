@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kharcha.app.ui.icons.Ic
+import com.kharcha.app.ui.theme.KharchaTheme
 
 /*
  * Top bars and the search box, built from Google's Material 3 components:
@@ -171,6 +172,9 @@ fun ActionDock(
     content: @Composable RowScope.() -> Unit,
 ) {
     val haptics = rememberHaptics()
+    val scheme = MaterialTheme.colorScheme
+    // Marigold in both themes: the bright accent in the dark theme, its soft container in the light one.
+    val dark = KharchaTheme.dark
     HorizontalFloatingToolbar(
         expanded = true,
         floatingActionButton = {
@@ -179,6 +183,8 @@ fun ActionDock(
                     haptics.click()
                     onAdd()
                 },
+                containerColor = if (dark) scheme.tertiary else scheme.tertiaryContainer,
+                contentColor = if (dark) scheme.onTertiary else scheme.onTertiaryContainer,
             ) {
                 KIcon(Ic.add, size = 26.dp, contentDescription = addLabel)
             }

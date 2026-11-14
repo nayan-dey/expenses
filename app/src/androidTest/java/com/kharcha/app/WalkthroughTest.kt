@@ -185,6 +185,9 @@ class WalkthroughTest {
             tapDesc("Search"); pause(1200)
             type(0, "rent"); pause(1500)
             shot("04-home-search")
+            // Close the search again, or its results stay on the home screen for every later step.
+            closeKeyboard()
+            tapDesc("Close search"); pause(900)
         }
 
         // ---- a sheet ----
@@ -251,7 +254,12 @@ class WalkthroughTest {
             tapText("Where could you save"); pause(2000); shot("33-insights"); swipeUp(); shot("34-insights-more")
             scrollAndTap("Ask Gemini"); pause(1500); shot("35-ask-gemini")
         }
-        step("36 habit and goals") { goHome(); tapExact("STREAK"); pause(2000); shot("36-habit"); swipeUp(); shot("37-goals") }
+        step("36 habit and goals") {
+            goHome(); tapExact("STREAK"); pause(2000); shot("36-habit"); swipeUp(); shot("37-goals")
+            scrollAndTap("New goal"); pause(1200)
+            type(0, "Emergency fund"); type(1, "50000"); type(2, "2000"); closeKeyboard()
+            tapExact("Save"); pause(1200); shot("37a-goal")
+        }
 
         // ---- settings ----
         step("38 settings") { openSettings(); shot("38-settings"); swipeUp(); shot("39-settings-more") }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialShapes
@@ -242,15 +243,19 @@ fun HeroCard(
     )
     val body: @Composable ColumnScope.() -> Unit = {
         Box {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 52.dp, y = (-52).dp)
-                    .size(190.dp)
-                    .rotate(turn)
-                    .clip(decoration.toShape())
-                    .background(fg.copy(alpha = 0.08f)),
-            )
+            // The turning shape sits behind the content and takes the card's size, whatever that
+            // is: it must not make a short card taller.
+            Box(Modifier.matchParentSize()) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 52.dp, y = (-52).dp)
+                        .requiredSize(190.dp)
+                        .rotate(turn)
+                        .clip(decoration.toShape())
+                        .background(fg.copy(alpha = 0.08f)),
+                )
+            }
             Column(Modifier.fillMaxWidth().padding(22.dp), content = content)
         }
     }

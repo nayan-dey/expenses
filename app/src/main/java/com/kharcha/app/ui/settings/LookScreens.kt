@@ -70,7 +70,7 @@ fun AppearanceScreen() {
         AppBar(onBack = { nav.back() }, title = "Appearance")
         SectionHeader("Theme")
         ButtonGroup(
-            options = listOf(GroupOption("Automatic", Ic.brightness_auto), GroupOption("Light", Ic.light_mode), GroupOption("Dark", Ic.dark_mode)),
+            options = listOf(GroupOption("Auto", Ic.brightness_auto), GroupOption("Light", Ic.light_mode), GroupOption("Dark", Ic.dark_mode)),
             selectedIndex = choices.indexOf(settings.theme),
             onSelect = { index -> app.settings.update { it.copy(theme = choices[index]) } },
             modifier = Modifier.padding(horizontal = 16.dp),

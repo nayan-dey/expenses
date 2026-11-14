@@ -143,7 +143,7 @@ fun ExportScreen(key: ExportRoute) {
                 enabled = items.isNotEmpty(),
             )
         }
-        Foot(if (items.size == 1) "1 item will be exported." else "${items.size} items will be exported. The columns are: date, time, type, amount, currency, category, notes, merchant, sheet, pending, repeat and the amount in the sheet's currency.")
+        Foot(if (items.size == 1) "1 item will be exported." else "${items.size} items will be exported. The columns include the date, time, type, amount, currency, category, notes, merchant, sheet, how it was paid, who paid and what friends owe.")
     }
 
     if (pickSheet) {
