@@ -128,18 +128,48 @@ class WalkthroughTest {
         }
     }
 
-    @Test
-    fun walkThroughEveryScreen() {
-        // The app has animations that never stop (the turning shape on the hero card), so never wait long for "idle".
-        Configurator.getInstance().setWaitForIdleTimeout(1200)
-        device.executeShellCommand("mkdir -p $dir")
-
+    private fun launchApp() {
         val context = instrumentation.targetContext
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         context.startActivity(launch)
         device.wait(Until.hasObject(By.pkg(context.packageName).depth(0)), 15000)
-        pause(4000)
+        pause(3000)
+    }
+
+    /**
+     * Gets back to the first screen from wherever the last step ended: presses Back until the
+     * home header is showing, and opens the app again if Back closed it. Every group of steps
+     * starts here, so one step that loses its way does not spoil the ones after it.
+     */
+    private fun goHome() {
+        repeat(12) {
+            dismissSystemDialogs()
+            if (!device.hasObject(By.pkg(app))) launchApp()
+            if (device.hasObject(By.pkg(app).desc("Settings")) && device.hasObject(By.pkg(app).text("Kharcha"))) return
+            device.pressBack()
+            pause(900)
+        }
+    }
+
+    private fun openSheet() {
+        goHome()
+        tapText("Personal")
+        pause(1800)
+    }
+
+    private fun openSettings() {
+        goHome()
+        tapDesc("Settings")
+        pause(1500)
+    }
+
+    @Test
+    fun walkThroughEveryScreen() {
+        // The app has animations that never stop (the turning shape on the hero card, the swaying tree), so never wait long for "idle".
+        Configurator.getInstance().setWaitForIdleTimeout(1200)
+        device.executeShellCommand("mkdir -p $dir")
+        launchApp()
         dismissSystemDialogs()
 
         step("01 welcome") { shot("01-welcome") }
@@ -149,95 +179,116 @@ class WalkthroughTest {
             pause(2500)
             shot("02-home")
         }
-        step("03 search every sheet") {
-            tapDesc("Search")
-            pause(1200)
-            type(0, "rent")
-            pause(1500)
-            shot("03-home-search")
-            closeKeyboard()
-            tapDesc("Close search")
+        step("03 home, lower half") { swipeUp(); shot("03-home-more") }
+        step("04 search every sheet") {
+            goHome()
+            tapDesc("Search"); pause(1200)
+            type(0, "rent"); pause(1500)
+            shot("04-home-search")
         }
-        step("04 a sheet") { tapText("Personal"); pause(2000); shot("04-sheet") }
-        step("05 the sheet, further down") { swipeUp(); shot("05-sheet-list"); swipeDown(); swipeDown() }
-        step("06 period picker") { tapDesc("Period:"); pause(1200); shot("06-period"); tapExact("This month"); pause(1500); shot("07-sheet-month") }
-        step("08 pending tab") { tapText("Pending  "); pause(1200); shot("08-pending"); tapText("This month  "); pause(900) }
-        step("09 filters") { tapDesc("Filters"); pause(1500); shot("09-filters"); tapExact("Expense"); pause(900); tapText("Show "); pause(1200); shot("10-filtered"); tapExact("Clear") }
-        step("11 new item, keypad") {
+
+        // ---- a sheet ----
+        step("05 a sheet") { openSheet(); shot("05-sheet") }
+        step("06 the sheet, further down") { swipeUp(); shot("06-sheet-list") }
+        step("07 period picker") { openSheet(); tapDesc("Period:"); pause(1200); shot("07-period"); tapExact("This month"); pause(1500); shot("08-sheet-month") }
+        step("09 pending tab") { tapText("Pending  "); pause(1200); shot("09-pending") }
+        step("10 filters") { openSheet(); tapDesc("Filters"); pause(1500); shot("10-filters"); tapExact("Expense"); pause(900); tapText("Show "); pause(1200); shot("11-filtered") }
+        step("12 sheet menu") { openSheet(); tapDesc("More"); pause(1200); shot("12-sheet-menu") }
+        step("13 select mode") { openSheet(); tapDesc("More"); pause(1000); tapExact("Select"); pause(1200); shot("13-select") }
+        step("14 edit sheet") { openSheet(); tapDesc("More"); pause(1000); tapExact("Edit sheet"); pause(1500); shot("14-sheet-edit") }
+        step("15 item details") { openSheet(); tapText("Corner store"); pause(1800); shot("15-details"); swipeUp(); shot("16-details-more") }
+
+        // ---- a new item ----
+        step("17 new item, keypad") {
+            openSheet()
             tapDesc("New item"); pause(1800)
-            shot("11-new-item")
+            shot("17-new-item")
             // No zero here: "0" is also what the empty amount box shows, and tapping that closes the keypad.
             listOf("1", "2", "5", "+", "3", "5").forEach { tapExact(it) }
             pause(600)
-            shot("12-new-item-sum")
-        }
-        step("13 new item, lower half") {
-            tapDesc("Hide the keypad")
-            pause(800)
+            shot("18-new-item-sum")
+            tapDesc("Hide the keypad"); pause(800)
             swipeUp()
-            shot("13-new-item-more")
+            shot("19-new-item-more")
             tapDesc("Save"); pause(2000)
-            shot("14-sheet-after-save")
+            shot("20-sheet-after-save")
         }
-        step("15 item details") { tapText("Rent"); pause(1800); shot("15-details"); back() }
-        step("16 sheet menu") { tapDesc("More"); pause(1200); shot("16-sheet-menu"); tapExact("Stats"); pause(2200); shot("17-stats") }
-        step("18 stats, lower half") { swipeUp(); shot("18-stats-more") }
-        step("19 trends") { tapDesc("Trends"); pause(2200); shot("19-trends"); swipeUp(); shot("20-trends-more"); back(); back() }
-        step("21 exchange rates") { tapDesc("More"); pause(1000); tapExact("Exchange rates"); pause(4000); shot("21-rates"); back() }
-        step("22 select mode") { tapDesc("More"); pause(1000); tapExact("Select"); pause(1200); shot("22-select"); back() }
-        step("23 edit sheet") { tapDesc("More"); pause(1000); tapExact("Edit sheet"); pause(1500); shot("23-sheet-edit"); back(); back() }
-        step("23a friends") {
-            tapDesc("Friends"); pause(1500); shot("23a-friends-empty")
-            tapText("Add a friend"); pause(1200)
+
+        // ---- stats, trends, rates ----
+        step("21 stats") { openSheet(); tapDesc("Stats"); pause(2200); shot("21-stats"); swipeUp(); shot("22-stats-more") }
+        step("23 trends") { openSheet(); tapDesc("More"); pause(1000); tapExact("Trends"); pause(2200); shot("23-trends"); swipeUp(); shot("24-trends-more") }
+        step("25 exchange rates") { openSheet(); tapDesc("More"); pause(1000); tapExact("Exchange rates"); pause(4000); shot("25-rates") }
+
+        // ---- friends and splitting ----
+        step("26 friends") {
+            goHome()
+            tapDesc("Friends"); pause(1500); shot("26-friends-empty")
+            tapDesc("Add a friend"); pause(1200)
             type(0, "Rahul"); type(1, "rahul@upi"); closeKeyboard()
-            tapExact("Save"); pause(1200); shot("23b-friends")
-            tapText("Rahul"); pause(1500); shot("23c-friend")
-            back(); back()
+            tapExact("Save"); pause(1200); shot("27-friends")
         }
-        step("23d split a bill") {
+        step("28 split a bill") {
+            openSheet()
             tapDesc("New item"); pause(1800)
             listOf("9", "6").forEach { tapExact(it) }
             tapDesc("Hide the keypad"); pause(700)
             swipeUp()
-            tapExact("Split with"); pause(1200); tapExact("Rahul"); pause(700); shot("23d-split-with")
+            tapExact("Split with"); pause(1200); tapExact("Rahul"); pause(700); shot("28-split-with")
             tapText("Split with 1"); pause(1000)
-            shot("23e-split-form")
+            shot("29-split-form")
             tapDesc("Save"); pause(1800)
         }
-        step("23f home cards, insights, habit") {
-            shot("23f-home-cards")
-            tapText("Where could you save"); pause(2000); shot("23g-insights"); swipeUp(); shot("23h-insights-more")
-            scrollAndTap("Ask Gemini"); pause(1500); shot("23i-ask-gemini"); device.pressBack(); pause(900)
-            back()
-            tapExact("Streak"); pause(2000); shot("23j-habit"); swipeUp(); shot("23k-goals")
-            back()
+        step("30 a friend") {
+            goHome()
+            tapDesc("Friends"); pause(1500); shot("30-friends-owed")
+            tapText("Rahul"); pause(1500); shot("31-friend")
+            tapExact("Settle up"); pause(1200); shot("32-settle")
         }
-        step("24 settings") { tapDesc("Settings"); pause(1500); shot("24-settings"); swipeUp(); shot("25-settings-more"); swipeDown() }
-        step("26 categories") {
-            tapExact("Categories"); pause(1500); shot("26-categories")
-            tapDesc("New category"); pause(1500); shot("27-new-category")
-            tapExact("Edit icon"); pause(1500); shot("28-icons")
-            device.pressBack(); pause(900)
-            back(); back()
+
+        // ---- insights, habit ----
+        step("33 insights") {
+            goHome()
+            tapText("Where could you save"); pause(2000); shot("33-insights"); swipeUp(); shot("34-insights-more")
+            scrollAndTap("Ask Gemini"); pause(1500); shot("35-ask-gemini")
         }
-        step("29 backup") { tapExact("Backup"); pause(1500); shot("29-backup"); back() }
-        step("30 export") { tapExact("Export"); pause(1500); shot("30-export"); back() }
-        step("31 import") { tapExact("Import"); pause(1500); shot("31-import"); back() }
-        step("32 app icon") { scrollAndTap("App icon"); pause(1500); shot("32-app-icon"); back() }
-        step("33 privacy") { scrollAndTap("Privacy"); pause(1500); shot("33-privacy"); back() }
-        step("33a reminders") { swipeDown(); swipeDown(); scrollAndTap("Reminders and backup"); pause(1500); shot("33a-reminders"); back() }
-        step("34 dark theme") {
-            swipeDown()
+        step("36 habit and goals") { goHome(); tapExact("STREAK"); pause(2000); shot("36-habit"); swipeUp(); shot("37-goals") }
+
+        // ---- settings ----
+        step("38 settings") { openSettings(); shot("38-settings"); swipeUp(); shot("39-settings-more") }
+        step("40 categories") {
+            openSettings()
+            scrollAndTap("Categories"); pause(1500); shot("40-categories")
+            tapDesc("New category"); pause(1500); shot("41-new-category")
+            tapExact("Edit icon"); pause(1500); shot("42-icons")
+        }
+        step("43 backup") { openSettings(); scrollAndTap("Backup"); pause(1500); shot("43-backup") }
+        step("44 export") { openSettings(); scrollAndTap("Export"); pause(1500); shot("44-export") }
+        step("45 import") { openSettings(); scrollAndTap("Import"); pause(1500); shot("45-import") }
+        step("46 reminders") { openSettings(); scrollAndTap("Reminders and backup"); pause(1500); shot("46-reminders") }
+        step("47 app icon") { openSettings(); scrollAndTap("App icon"); pause(1500); shot("47-app-icon") }
+        step("48 privacy") { openSettings(); scrollAndTap("Privacy"); pause(1500); shot("48-privacy") }
+        step("49 trash") { openSettings(); scrollAndTap("Trash"); pause(1500); shot("49-trash") }
+        step("50 appearance") {
+            openSettings()
+            scrollAndTap("Appearance"); pause(1500); shot("50-appearance")
+            tapExact("Dark"); pause(1500); shot("51-appearance-dark")
+            swipeUp(); shot("52-appearance-more")
+        }
+
+        // ---- the same screens in the dark theme, then another accent ----
+        step("53 dark home") { goHome(); shot("53-home-dark"); swipeUp(); shot("54-home-more-dark") }
+        step("55 dark sheet") { openSheet(); shot("55-sheet-dark"); swipeUp(); shot("56-sheet-list-dark") }
+        step("57 dark new item") { openSheet(); tapDesc("New item"); pause(1800); shot("57-new-item-dark") }
+        step("58 dark stats") { openSheet(); tapDesc("Stats"); pause(2200); shot("58-stats-dark") }
+        step("59 dark habit") { goHome(); tapExact("STREAK"); pause(2000); shot("59-habit-dark") }
+        step("60 teal accent") {
+            openSettings()
             scrollAndTap("Appearance"); pause(1500)
-            tapExact("Dark"); pause(1500); shot("34-appearance-dark")
-            swipeUp(); shot("34a-appearance-more")
-            tapDesc("Teal"); pause(1200); shot("34b-appearance-teal")
-            swipeDown()
-            back(); back(); pause(1500)
-            shot("35-home-dark")
+            swipeUp()
+            tapDesc("Teal"); pause(1200)
+            goHome(); shot("60-home-teal")
         }
-        step("36 dark sheet") { tapText("Personal"); pause(2000); shot("36-sheet-dark"); swipeUp(); shot("37-sheet-list-dark"); back() }
-        step("38 new sheet form") { tapText("New sheet"); pause(1500); shot("38-new-sheet"); back() }
+        step("61 new sheet form") { goHome(); scrollAndTap("New sheet"); pause(1500); shot("61-new-sheet") }
 
         println("KHARCHA-WALKTHROUGH\n$report")
     }

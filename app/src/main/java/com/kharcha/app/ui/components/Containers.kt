@@ -143,7 +143,8 @@ fun RowContent(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    // Room for a short explanation under a setting.
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
