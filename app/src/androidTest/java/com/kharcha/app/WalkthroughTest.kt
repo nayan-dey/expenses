@@ -95,6 +95,18 @@ class WalkthroughTest {
         error("not found after scrolling: $text")
     }
 
+    /** Swipes up until something with this description is on screen, then taps it. */
+    private fun scrollAndTapDesc(text: String) {
+        repeat(6) {
+            if (find(By.pkg(app).descContains(text), 700) != null) {
+                tapDesc(text)
+                return
+            }
+            swipeUp()
+        }
+        error("not found after scrolling: $text")
+    }
+
     /** Types into the text box that is number `index` on screen, counted from the top. */
     private fun type(index: Int, text: String) {
         val boxes = device.findObjects(By.clazz("android.widget.EditText")).sortedBy { it.visibleBounds.centerY() }
@@ -239,6 +251,13 @@ class WalkthroughTest {
             tapExact("Split with"); pause(1200); tapExact("Rahul"); pause(700); shot("28-split-with")
             tapText("Split with 1"); pause(1000)
             shot("29-split-form")
+            // Somebody at the table who is not in Friends: the bill is cut three ways, the friend owes one part.
+            scrollAndTapDesc("One person more"); pause(700); shot("29b-split-paying-for-one-more")
+            // Typing each friend's part by hand instead.
+            tapExact("Type amounts"); pause(900); shot("29c-split-typed")
+            tapText("tap to change"); pause(1000); shot("29d-split-type-a-share")
+            tapExact("Cancel"); pause(700)
+            tapExact("Equally"); pause(700)
             tapDesc("Save"); pause(1800)
         }
         step("30 a friend") {

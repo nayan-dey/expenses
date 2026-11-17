@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +55,9 @@ import com.kharcha.app.core.util.Currencies
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.core.util.Money
 import com.kharcha.app.core.util.newId
+import com.kharcha.app.domain.MAX_COVERED
+import com.kharcha.app.domain.equalShare
+import com.kharcha.app.domain.splitHeads
 import com.kharcha.app.platform.Share
 import com.kharcha.app.ui.components.AppBar
 import com.kharcha.app.ui.components.Btn
@@ -129,8 +134,10 @@ private data class Draft(
     val payer: String? = null,
     /** Friends sharing a bill you paid. */
     val splitWith: List<String> = emptyList(),
-    /** true = everyone, you included, pays the same; false = the amounts typed in [shares]. */
+    /** true = everyone at the table pays the same; false = the amounts typed in [shares]. */
     val equal: Boolean = true,
+    /** People you are paying for who are not in Friends. They count as heads in an equal split. */
+    val covered: Int = 0,
     /** Hand-typed shares, friend id to amount text. */
     val shares: Map<String, String> = emptyMap(),
     /** Set when this is a settling-up payment with a friend. */
@@ -220,8 +227,9 @@ fun ItemEditScreen(key: ItemRoute) {
                     method = template.method,
                     payer = template.payer,
                     splitWith = template.splits.map { it.personId },
-                    // Equal when every friend's share is exactly the amount divided by everyone.
-                    equal = template.splits.all { it.amountMinor == template.amountMinor / (template.splits.size + 1) },
+                    // Equal when every friend's share is exactly the amount divided by everyone at the table.
+                    equal = template.splits.all { it.amountMinor == equalShare(template.amountMinor, template.splits.size, template.covered) },
+                    covered = template.covered.coerceIn(0, MAX_COVERED),
                     shares = template.splits.associate { it.personId to Money.plain(it.amountMinor, template.currency) },
                     settles = if (existing != null) template.settles else null,
                 )
@@ -289,7 +297,7 @@ fun ItemEditScreen(key: ItemRoute) {
     val splitting = draft.mode == "EXPENSE" && draft.payer == null && draft.settles == null && draft.splitWith.isNotEmpty()
     val shareMinor: Map<String, Long> = when {
         !splitting || amountMinor == null -> emptyMap()
-        draft.equal -> draft.splitWith.associateWith { amountMinor / (draft.splitWith.size + 1) }
+        draft.equal -> draft.splitWith.associateWith { equalShare(amountMinor, draft.splitWith.size, draft.covered) }
         else -> draft.splitWith.associateWith { id ->
             draft.shares[id]?.replace(",", "")?.toBigDecimalOrNull()?.let { Money.toMinor(it, draft.currency) }?.coerceAtLeast(0L) ?: 0L
         }
@@ -349,6 +357,7 @@ fun ItemEditScreen(key: ItemRoute) {
                     method = draft.method,
                     payer = if (draft.kind == Kind.EXPENSE && draft.settles == null) draft.payer else null,
                     splits = shareMinor.filterValues { it > 0L }.map { (id, share) -> Split(id, share) },
+                    covered = if (splitting && draft.equal) draft.covered else 0,
                     settles = draft.settles,
                     createdAt = existing?.createdAt ?: 0L,
                 ),
@@ -592,6 +601,7 @@ fun ItemEditScreen(key: ItemRoute) {
                     val rows = when {
                         draft.payer != null -> 1
                         friends.isEmpty() -> 2
+                        draft.equal -> 4 + friends.size
                         else -> 3 + friends.size
                     }
                     SettingRow(0, rows, "Who paid", icon = Ic.group, iconColor = Color(0xFFEC4A63), value = payer?.name ?: "You", onClick = { pickPayer = true })
@@ -608,12 +618,69 @@ fun ItemEditScreen(key: ItemRoute) {
                             onClick = { pickSplit = true },
                         )
                         if (friends.isNotEmpty()) {
-                            SwitchRow(2, rows, "Split equally", draft.equal, { draft = draft.copy(equal = it) }, subtitle = if (draft.equal) "Everyone, you included, pays the same" else "Tap a friend to type their share")
+                            // The two ways to split: the app divides it, or you type each friend's part.
+                            GroupItem(2, rows) {
+                                ButtonGroup(
+                                    options = listOf(GroupOption("Equally"), GroupOption("Type amounts")),
+                                    selectedIndex = if (draft.equal) 0 else 1,
+                                    onSelect = { index ->
+                                        val equal = index == 0
+                                        if (equal != draft.equal) {
+                                            draft = if (equal) {
+                                                draft.copy(equal = true)
+                                            } else {
+                                                // Typing starts from the equal split, so only the parts that differ need changing.
+                                                draft.copy(equal = false, shares = shareMinor.filterValues { it > 0L }.mapValues { Money.plain(it.value, draft.currency) })
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                )
+                            }
+                            var position = 3
+                            if (draft.equal) {
+                                // Someone at the table who is not in Friends: your father, a guest. Their part stays with you.
+                                GroupItem(position++, rows) {
+                                    RowContent(
+                                        title = "You also pay for",
+                                        subtitle = "Family, or anyone not in Friends",
+                                        trailing = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                IconBtn(
+                                                    Ic.remove, "One person fewer",
+                                                    { draft = draft.copy(covered = (draft.covered - 1).coerceAtLeast(0)) },
+                                                    style = IconBtnStyle.TONAL, size = 40.dp, iconSize = 20.dp,
+                                                    enabled = draft.covered > 0,
+                                                )
+                                                Text(
+                                                    "${draft.covered}",
+                                                    style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                                                    textAlign = TextAlign.Center,
+                                                    modifier = Modifier
+                                                        .widthIn(min = 36.dp)
+                                                        .semantics { contentDescription = "Paying for ${draft.covered} more" },
+                                                )
+                                                IconBtn(
+                                                    Ic.add, "One person more",
+                                                    { draft = draft.copy(covered = (draft.covered + 1).coerceAtMost(MAX_COVERED)) },
+                                                    style = IconBtnStyle.TONAL, size = 40.dp, iconSize = 20.dp,
+                                                    enabled = draft.covered < MAX_COVERED,
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            }
                             friends.forEachIndexed { index, friend ->
+                                val untyped = !draft.equal && draft.shares[friend.id].isNullOrBlank()
                                 SettingRow(
-                                    3 + index, rows, friend.name,
-                                    subtitle = "owes you",
-                                    value = if (hidden) HIDDEN_AMOUNT else Money.format(shareMinor[friend.id] ?: 0L, draft.currency),
+                                    position + index, rows, friend.name,
+                                    subtitle = if (draft.equal) "owes you" else "owes you · tap to change",
+                                    value = when {
+                                        untyped -> "Tap to type"
+                                        hidden -> HIDDEN_AMOUNT
+                                        else -> Money.format(shareMinor[friend.id] ?: 0L, draft.currency)
+                                    },
                                     onClick = if (draft.equal) null else ({ askShare = friend.id }),
                                 )
                             }
@@ -622,7 +689,18 @@ fun ItemEditScreen(key: ItemRoute) {
                 }
                 when {
                     payer != null -> Foot("The amount above is your share. You owe ${payer.name} this much. It counts as your spending, but leaves the sheet's balance alone until you settle up under Friends.")
-                    friends.isNotEmpty() && amountMinor != null && !hidden -> Foot("Your own share is ${Money.format((amountMinor - lent).coerceAtLeast(0L), draft.currency)}. Friends owe you ${Money.format(lent, draft.currency)} in all.")
+                    friends.isNotEmpty() && amountMinor != null && !hidden -> {
+                        val mine = Money.format((amountMinor - lent).coerceAtLeast(0L), draft.currency)
+                        val owed = Money.format(lent, draft.currency)
+                        val who = if (friends.size == 1) "${friends.first().name} owes you $owed." else "Friends owe you $owed in all."
+                        Foot(
+                            when {
+                                !draft.equal -> "$who The rest, $mine, is your share."
+                                draft.covered > 0 -> "Split ${splitHeads(friends.size, draft.covered)} ways, ${Money.format(equalShare(amountMinor, friends.size, draft.covered), draft.currency)} each. $who Your share is $mine: your own and ${draft.covered} more."
+                                else -> "Split ${splitHeads(friends.size, 0)} ways, ${Money.format(equalShare(amountMinor, friends.size, 0), draft.currency)} each. $who Your share is $mine."
+                            },
+                        )
+                    }
                 }
             }
 
@@ -831,6 +909,7 @@ fun ItemEditScreen(key: ItemRoute) {
             title = "${data.person(sharing)?.name ?: "Friend"}'s share",
             label = "Amount in ${draft.currency}",
             initial = draft.shares[sharing].orEmpty(),
+            text = "What they owe you for this bill. Whatever is left over stays as your own share.",
             kind = FieldKind.MONEY,
             prefix = Money.symbol(draft.currency),
             onConfirm = { typed -> draft = draft.copy(shares = draft.shares + (sharing to typed)) },

@@ -85,6 +85,7 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | Trends: bars by day, week, month, year; balance over time | Seen |
 | CSV export (optionally a ZIP with pictures) and CSV import with category review | Written |
 | Backup to one file, restore, and merge (latest edit wins) | Written |
+| Old backups keep opening: saved copies of them are opened by a test on every build | Written, the test passes in the cloud build |
 | Share one sheet as a file, merge it on another phone | Written |
 | Trash for sheets, categories and items; empties itself after 30 days | Seen |
 | Print a sheet or save it as PDF | Written, cannot be tested on an emulator |
@@ -92,6 +93,8 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | Light and dark theme, phone (wallpaper) colours, haptics | Seen |
 | Six launcher icons to choose from | Written |
 | Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Seen |
+| Split a bill that includes people you pay for (family, a guest): they count as heads, their parts stay with you | Written |
+| Split by typing each friend's amount ("Equally" or "Type amounts") | Written |
 | Pay a friend back through any UPI app (amount and UPI address filled in) | Written, cannot be tested on an emulator |
 | "Paid with" on items: UPI, cash, card, bank | Seen |
 | Insights: last 7 or 30 days against the stretch before, with what a change is worth | Seen |
@@ -117,6 +120,11 @@ Do not reopen these unless the owner does.
   database, no account, no sign-up and no server. The app must be fully usable offline, forever.
 - **Everything is unlocked.** Features the iOS app sells as "Pro" are simply part of the app.
   There are no purchases and no locked features.
+- **A backup made by any older version must open in every newer one.** There is no account and
+  no server, so the backup file is the only way his records survive a new phone or a reinstall.
+  Section 7 says how this is kept true and section 8 how it is checked.
+- **Splitting must stay easy.** One form, few taps, plain words. He often eats out with a friend
+  and a family member: the family member is not a "friend who owes", their part is his to pay.
 - **It is built around how the owner lives.** He pays almost everything by UPI, goes out with
   the same five or six friends and loses track of who owes whom, and spends on food and friends
   instead of saving. The app must make splitting a bill quick, show where money could be saved,
@@ -214,14 +222,20 @@ One Gradle project at the repo root, single `app` module, package and app id `co
 | `data/JsonFile.kt` | The storage layer: one value, one JSON file, a `StateFlow` in memory |
 | `data/Ledger.kt` | The rules for changing sheets, categories and items |
 | `data/Exchange.kt` | Backup, shared sheet, CSV out and in |
+| `data/Compat.kt` | Reading a backup or the data file from any version: the normal way first, then entry by entry so one bad entry never costs the rest |
 | `data/RatesRepository.kt`, `ImageStore.kt`, `Seed.kt` | Exchange rates; receipt pictures; default categories and sample data |
 | `domain/Summaries.kt` | Pure sums: totals, day groups, filters, search, stats, trends, budget, who owes whom, the streak |
+| `domain/Splits.kt` | The sums of an equal split: heads (you, friends, people you pay for) and each friend's part |
 | `domain/Insights.kt` | The "where could I save" rules, the text for Ask Gemini, the quick look used by home, widgets and the reminder |
 | `platform/` | Android-only bits: app lock, launcher icon switch, printing, sharing, the daily alarm and notification (`Reminders`, `Nudges`), automatic backup (`AutoExport`), widgets (`Widgets`) |
 | `ui/<screen>/` | One folder per group of screens |
 | `ui/components/`, `ui/theme/`, `ui/icons/` | The design system |
 | `ui/nav/` | Routes (one key per screen), the `Navigator`, snackbar messages |
 | `ui/KharchaRoot.kt` | Theme, welcome screen, lock, and the list of every screen |
+
+Two more source folders sit beside `main`: `app/src/test` (plain tests that need no phone:
+old backups and the split sums, run by the cloud build before the APK is made) and
+`app/src/androidTest` (the walkthrough robot, section 8).
 
 Icons are Material Symbols Rounded as vector drawables, listed in `ui/icons/Ic.kt`. To add one,
 drop its outline and filled XML in `res/drawable` (without the `android:tint` line) and add its
@@ -248,6 +262,15 @@ Pictures are JPEG files in `images/` beside them.
 - **The files must stay readable forever.** Every new field needs a default. Never rename or
   remove a field or an enum entry. `KharchaJson` ignores unknown fields, so an older app can
   open a newer file.
+- **Old backups are a promise.** `app/src/test/resources/backups/` holds copies of the
+  `kharcha.json` that earlier versions wrote. `BackupCompatTest` opens them all on every build.
+  Never edit or delete one. When `Models.kt` changes, add a new copy written the new way and a
+  test for it.
+- **One bad entry never costs the rest.** `data/Compat.kt` reads a file the normal way first.
+  If that fails it reads each sheet, item, friend and goal by itself and leaves out only the
+  ones it cannot understand. The data file on the phone is read with the same safety net, and
+  the unreadable original is kept beside it as `.unreadable`. A file that is not a Kharcha file
+  at all is refused, so it can never be offered as a "replace everything".
 - **Money is whole minor units** (paise, cents) in a `Long`, with its currency code. Never
   floating point. `Money` knows how many decimals each currency has.
 - **An item keeps its own exchange rate** (`Item.rate`: sheet-currency units per one unit of the
@@ -264,6 +287,11 @@ Pictures are JPEG files in `images/` beside them.
   balances use the cash view; stats, trends, budgets and insights use the spending view.
 - **Split bills.** On an expense you paid, `splits` lists what each friend owes back; your own
   share is the rest. The cash view counts the full amount, the spending view only your share.
+- **People you pay for** (`Item.covered`, a count) shared the bill but are not in Friends: a
+  parent, a guest. An equal split divides by every head (`domain/Splits.kt`: you + friends +
+  covered), each friend owes one part, and the covered parts stay inside your own share. Nobody
+  owes for them and they have no name or balance. With typed amounts `covered` is 0, because
+  whatever is not typed is already yours. Sums are rounded down, so the spare paisa is yours.
 - **A bill a friend paid** has `payer` set and its amount is your share. It counts as spending
   but is left out of the cash view, because nothing has left your pocket yet.
 - **Settling up** is an item with `settles` set (income = they paid you, expense = you paid
@@ -292,6 +320,9 @@ Pictures are JPEG files in `images/` beside them.
   APK and publishes it to the rolling `preview` release:
   https://github.com/nayan-dey/expenses/releases/download/preview/kharcha-preview.apk
 - Pushes that change only `.md` files do not start a build.
+- Before the APK is built, the same workflow runs the plain tests in `app/src/test`
+  (`./gradlew :app:testDebugUnitTest`): old backups must open and the split sums must be right.
+  If one fails, no APK is published. Fix the code, not the saved backup.
 - To see the screens, push a commit whose message contains `[shots]`.
   `.github/workflows/walkthrough.yml` runs `app/src/androidTest/.../WalkthroughTest.kt` on a
   cloud emulator and uploads screenshots as the `kharcha-walkthrough` artifact
@@ -350,6 +381,10 @@ Remove each one when it is answered, and record the answer in the right section.
 
 Newest first. One line per change to this file.
 
+- 2026-11-17: Split bills can include people you pay for (`Item.covered`) and can be typed by
+  hand ("Equally" or "Type amounts"). Old backups are now guarded: `data/Compat.kt`, saved
+  copies under `app/src/test/resources/backups`, `BackupCompatTest` in the cloud build.
+  Sections 3, 4, 6, 7 and 8 updated.
 - 2026-11-14: Second batch built: friends and splits, paid-with, insights, Ask Gemini, streak
   tree, goals, reminder, automatic backup, widgets, look options. Sections 3 to 7 and 10 updated.
 - 2026-11-14: File created with the first version of the app. Second batch of features (friends,

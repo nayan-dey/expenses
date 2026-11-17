@@ -90,6 +90,9 @@ dependencies {
     // The whole data file, backups and shared sheets are JSON written with this.
     implementation(libs.kotlinx.serialization.json)
 
+    // Plain tests that run in the cloud build (app/src/test): old backups must still open.
+    testImplementation(libs.junit)
+
     // On-device walkthrough test (app/src/androidTest): opens every screen and saves screenshots.
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

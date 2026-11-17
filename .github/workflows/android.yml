@@ -35,6 +35,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Opens saved copies of old backups with today's code. A build that cannot read
+      # them stops here and is never published.
+      - name: Check that old backups still open
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
       - name: Build APK
         run: ./gradlew :app:assembleRelease --stacktrace
 

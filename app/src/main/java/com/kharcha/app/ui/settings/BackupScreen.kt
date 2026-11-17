@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.data.KharchaFile
 import com.kharcha.app.data.Seed
@@ -107,7 +108,7 @@ fun BackupScreen() {
                 onClick = { open.launch(arrayOf("application/zip", "application/json", "application/octet-stream", "*/*")) },
             )
         }
-        Foot("The file holds ${data.liveSheets.size} sheets, ${data.items.count { it.deletedAt == null }} items, the categories and the pictures. If Google backup is switched on in the phone's own settings, Android also keeps a copy of the app's data for you.")
+        Foot("The file holds ${data.liveSheets.size} sheets, ${data.items.count { it.deletedAt == null }} items, your friends, goals, the categories and the pictures. A backup saved by any earlier version of Kharcha opens in this one. If Google backup is switched on in the phone's own settings, Android also keeps a copy of the app's data for you.")
 
         SectionHeader("Two phones")
         Text(
@@ -127,6 +128,8 @@ fun BackupScreen() {
     val file = opened
     if (file != null) {
         val incoming = file.data
+        // Saved by a later version of the app than this one?
+        val newer = file.format > KharchaFile().format || incoming.format > AppData().format
         AlertDialog(
             onDismissRequest = { opened = null },
             title = { Text(if (file.kind == "sheet") "Shared sheet" else "Backup") },
@@ -135,7 +138,8 @@ fun BackupScreen() {
                     "This file has ${incoming.sheets.size} ${if (incoming.sheets.size == 1) "sheet" else "sheets"} and ${incoming.items.size} items" +
                         (if (file.exportedAt > 0L) ", saved ${Dates.ago(file.exportedAt, now)}" else "") +
                         ".\n\nMerge adds it to what you have; where both have the same item, the one changed last is kept." +
-                        (if (file.kind == "sheet") "" else "\n\nReplace throws away everything in the app now and uses the file instead."),
+                        (if (file.kind == "sheet") "" else "\n\nReplace throws away everything in the app now and uses the file instead.") +
+                        (if (newer) "\n\nThis file was saved by a newer version of Kharcha. Anything this version does not know about will be left out, so update the app first if you can." else ""),
                 )
             },
             confirmButton = {
@@ -165,7 +169,7 @@ fun BackupScreen() {
             danger = true,
             onConfirm = {
                 app.ledger.eraseAll()
-                app.ledger.replaceAll(com.kharcha.app.core.model.AppData(categories = Seed.defaultCategories))
+                app.ledger.replaceAll(AppData(categories = Seed.defaultCategories))
                 messenger.show("Everything erased")
             },
             onDismiss = { confirmErase = false },

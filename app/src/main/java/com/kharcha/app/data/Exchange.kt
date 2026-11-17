@@ -137,8 +137,7 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
         }.getOrNull()
     }
 
-    private fun parse(text: String): KharchaFile? =
-        runCatching { KharchaJson.decodeFromString(KharchaFile.serializer(), text) }.getOrNull()?.takeIf { it.app == "kharcha" }
+    private fun parse(text: String): KharchaFile? = readKharchaJson(text)
 
     // ---------------------------------------------------------------------------
     // CSV out

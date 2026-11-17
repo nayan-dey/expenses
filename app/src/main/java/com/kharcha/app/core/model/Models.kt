@@ -177,6 +177,12 @@ data class Item(
     val payer: String? = null,
     /** When you paid for others too: what each friend owes you back. Your own share is the rest. */
     val splits: List<Split> = emptyList(),
+    /**
+     * People who shared this bill but are not in Friends (family, someone you are treating).
+     * An equal split counts them as heads, and their parts stay inside your own share: nobody
+     * owes you for them. Only kept so the form opens the same way it was saved.
+     */
+    val covered: Int = 0,
     /** Set on a settling-up payment: the friend it squares things with. Not spending, not income. */
     val settles: String? = null,
     val createdAt: Long = 0,

@@ -37,6 +37,11 @@ class JsonFile<T>(
     private val serializer: KSerializer<T>,
     private val default: T,
     scope: CoroutineScope,
+    /**
+     * A second, more patient way to read the file, tried when the normal one fails: it may
+     * keep the entries it understands and leave out the ones it does not. Null = give up.
+     */
+    private val rescue: (String) -> T? = { null },
     /** Called after each write to disk (the home-screen widgets redraw from here). */
     private val onSaved: () -> Unit = {},
 ) {
@@ -81,10 +86,18 @@ class JsonFile<T>(
     private fun read(): T {
         for (candidate in listOf(file, backup)) {
             if (!candidate.exists()) continue
-            val parsed = runCatching { KharchaJson.decodeFromString(serializer, candidate.readText()) }.getOrNull()
+            val text = runCatching { candidate.readText() }.getOrNull() ?: continue
+            val parsed = runCatching { KharchaJson.decodeFromString(serializer, text) }.getOrNull()
             if (parsed != null) return parsed
-            // Unreadable: keep it aside rather than overwrite it, in case it can be rescued by hand.
-            runCatching { candidate.renameTo(File(file.parentFile, candidate.name + ".unreadable")) }
+            // Not readable the normal way. Keep the file aside untouched, in case it is needed
+            // later, then save what can be saved from it.
+            val aside = File(file.parentFile, candidate.name + ".unreadable")
+            val rescued = runCatching { rescue(text) }.getOrNull()
+            if (rescued != null) {
+                runCatching { candidate.copyTo(aside, overwrite = true) }
+                return rescued
+            }
+            runCatching { candidate.renameTo(aside) }
         }
         return default
     }

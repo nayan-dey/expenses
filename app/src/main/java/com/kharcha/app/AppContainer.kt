@@ -9,6 +9,7 @@ import com.kharcha.app.data.ImageStore
 import com.kharcha.app.data.JsonFile
 import com.kharcha.app.data.Ledger
 import com.kharcha.app.data.RatesRepository
+import com.kharcha.app.data.rescueAppData
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.platform.AppLock
 import com.kharcha.app.platform.AutoExport
@@ -54,7 +55,7 @@ class AppContainer(context: Context) {
     private val appContext: Context = context.applicationContext
     private val dir: File = context.filesDir
     // Whenever the data or the settings reach the disk, the home-screen widgets are redrawn.
-    private val dataFile = JsonFile(File(dir, "kharcha.json"), AppData.serializer(), AppData(), appScope) { Widgets.refresh(appContext) }
+    private val dataFile = JsonFile(File(dir, "kharcha.json"), AppData.serializer(), AppData(), appScope, rescue = ::rescueAppData) { Widgets.refresh(appContext) }
     private val settingsFile = JsonFile(File(dir, "settings.json"), Settings.serializer(), Settings(), appScope) { Widgets.refresh(appContext) }
     private val ratesFile = JsonFile(File(dir, "rates.json"), Rates.serializer(), Rates(), appScope)
 
