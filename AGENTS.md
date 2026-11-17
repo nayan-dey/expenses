@@ -59,8 +59,8 @@ One branch, `main`, in `nayan-dey/expenses` (a **public** repo). The working cop
 `~/Documents/safaguardd/nayan-reverse-eng-apps/kharcha`.
 
 "Written" means the code exists and compiled. "Seen" means its screens were seen in walkthrough
-screenshots on a cloud emulator (the last full walkthrough: 2026-11-14, 37 of 39 steps reached
-their screens, no crash). "Seen" is about screens drawing correctly with sample data, not about
+screenshots on a cloud emulator (the last full walkthrough: 2026-11-17, every step reached its
+screen, 71 screenshots, no crash). "Seen" is about screens drawing correctly with sample data, not about
 every button having been pressed. Nothing has been tried on a real phone by an agent.
 
 | Feature | State |
@@ -70,8 +70,8 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | All sheets added up in the preferred currency (home hero card) | Seen |
 | Items: expense, income, transfer between sheets | Seen |
 | Amount keypad with a calculator (+ − × ÷) | Seen |
-| The sum typed on the keypad is kept and shown again in the item's details | Written |
-| Category and "paid with" guessed from the note (your history, category names, a word list) | Written |
+| The sum typed on the keypad is kept and shown again in the item's details | Seen |
+| Category and "paid with" guessed from the note (your history, category names, a word list) | Seen for the category; "paid with" written |
 | Any currency per item, exchange rate frozen on the item, rate editable per item | Written |
 | Exchange rates: downloaded, hand-set rates, converter screen | Written |
 | Categories: icon (about 190 to choose from), colour, expense or income | Seen |
@@ -93,23 +93,23 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | Trash for sheets, categories and items; empties itself after 30 days | Seen |
 | Print a sheet or save it as PDF | Written, cannot be tested on an emulator |
 | App lock (fingerprint, face or PIN), block screenshots, sensitive mode | Written, lock cannot be tested on an emulator |
-| The eye that hides amounts is in every top bar; showing them again asks for a fingerprint or PIN | Written, the prompt cannot be tested on an emulator |
-| Home dashboard: Gullu, last 7 days as bars, this month by category (ring), against last month, how it was paid | Written |
+| The eye that hides amounts is in every top bar; showing them again asks for a fingerprint or PIN | Seen in the bars; the prompt cannot be tested on an emulator |
+| Home dashboard: Gullu, last 7 days as bars, this month by category (ring), against last month, how it was paid | Seen |
 | Light and dark theme, phone (wallpaper) colours, haptics | Seen |
 | Six launcher icons to choose from | Written |
 | Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Seen |
 | Split a bill that includes people you pay for (family, a guest): they count as heads, their parts stay with you | Seen |
 | Split by typing each friend's amount ("Equally" or "Type amounts") | Seen |
-| Money lent to or borrowed from a friend (a loan: not spending, shown under Friends) | Written |
+| Money lent to or borrowed from a friend (a loan: not spending, shown under Friends) | Seen |
 | Pay a friend back through any UPI app (amount and UPI address filled in) | Written, cannot be tested on an emulator |
 | "Paid with" on items: UPI, cash, card, bank | Seen |
 | Insights: last 7 or 30 days against the stretch before, with what a change is worth | Seen |
 | "Ask Gemini": a summary you read first, then share with Gemini or any app | Written, the hand-over cannot be tested on an emulator |
 | Daily streak drawn as a tree that grows through six stages; its leaves go dry until today is logged | Seen |
-| Gullu, an animated mascot whose mood follows the day (app, widgets, notifications) | Written |
-| Gems: earned by logging, spent to bring back a streak broken in the last 3 days | Written |
+| Gullu, an animated mascot whose mood follows the day (app, widgets, notifications) | Seen in the app (happy only); widgets and notifications not seen |
+| Gems: earned by logging, spent to bring back a streak broken in the last 3 days | Seen (the count); buying a day back is covered by tests only |
 | Saving and investing goals: target, monthly amount, "done for this month" | Seen |
-| Reminders one, three or six times a day (weekly round-up on Sundays, monthly on the 1st) | Written, timing cannot be tested on an emulator |
+| Reminders one, three or six times a day (weekly round-up on Sundays, monthly on the 1st) | Screen seen; timing cannot be tested on an emulator |
 | Daily automatic backup to Downloads/Kharcha (Android 10 and newer) | Written, not seen running |
 | Four home-screen widgets: "today" and "this month" (2 by 2), wide (4 by 2) and large (4 by 4) with Gullu and the tree | Written, not seen on a home screen |
 | Look: six typefaces, text size, six accent colours, pure black, corner style | Seen |

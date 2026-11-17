@@ -129,9 +129,8 @@ fun HabitScreen() {
         KCard(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), padding = 20.dp) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 MascotSays(mood, mascotLine(mood, streak, repair, gems.balance), Modifier.fillMaxWidth())
-                Gap(6.dp)
                 // Dry leaves until today is logged: it is watered by adding an item.
-                StreakTree(streak.current, size = 170.dp, thirsty = !streak.today && streak.current > 0)
+                StreakTree(streak.current, size = 150.dp, thirsty = !streak.today && streak.current > 0)
                 Text(
                     when (streak.current) {
                         0 -> "No streak yet"

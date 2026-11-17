@@ -91,7 +91,7 @@ fun SettingsScreen() {
                 Column(Modifier.weight(1f)) {
                     Text("Backup", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (settings.lastBackupAt == 0L) "Nothing saved yet" else "Last saved ${Dates.ago(settings.lastBackupAt, now)}",
+                        if (settings.lastBackupAt == 0L) "Nothing saved yet. Tap for restore and more." else "Last saved ${Dates.ago(settings.lastBackupAt, now)}. Tap for restore and more.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -107,7 +107,7 @@ fun SettingsScreen() {
             SettingRow(2, 4, "Habit and goals", icon = Ic.savings, iconColor = Color(0xFF2FA866), subtitle = "Your streak, your tree, saving and investing goals", onClick = { nav.go(HabitRoute) })
             SettingRow(
                 3, 4, "Reminders and backup", icon = Ic.notifications, iconColor = Color(0xFFF59B42),
-                subtitle = "Daily reminder, automatic backup to Downloads",
+                subtitle = "Reminders through the day, automatic backup to Downloads",
                 value = if (settings.reminder) "On" else null,
                 onClick = { nav.go(RemindersRoute) },
             )
@@ -115,15 +115,11 @@ fun SettingsScreen() {
         Gap(14.dp)
 
         KGroup {
-            SettingRow(
-                0, 5, "Backup", icon = Ic.backup, iconColor = Color(0xFF3F8EF5),
-                subtitle = if (settings.lastBackupAt == 0L) "No backup saved yet" else "Last saved ${Dates.ago(settings.lastBackupAt, now)}",
-                onClick = { nav.go(BackupRoute) },
-            )
-            SettingRow(1, 5, "Categories", icon = Ic.list, iconColor = Color(0xFF32B8C6), value = data.liveCategories.size.toString(), onClick = { nav.go(CategoriesRoute) })
-            SettingRow(2, 5, "Export", icon = Ic.upload, iconColor = Color(0xFFF59B42), onClick = { nav.go(ExportRoute()) })
-            SettingRow(3, 5, "Import", icon = Ic.download, iconColor = Color(0xFF45C466), onClick = { nav.go(ImportRoute()) })
-            SettingRow(4, 5, "Trash", icon = Ic.delete, iconColor = Color(0xFFEF5350), value = if (trash == 0) "Empty" else trash.toString(), onClick = { nav.go(TrashRoute) })
+            // Backup is the card at the top of this screen.
+            SettingRow(0, 4, "Categories", icon = Ic.list, iconColor = Color(0xFF32B8C6), value = data.liveCategories.size.toString(), onClick = { nav.go(CategoriesRoute) })
+            SettingRow(1, 4, "Export", icon = Ic.upload, iconColor = Color(0xFFF59B42), onClick = { nav.go(ExportRoute()) })
+            SettingRow(2, 4, "Import", icon = Ic.download, iconColor = Color(0xFF45C466), onClick = { nav.go(ImportRoute()) })
+            SettingRow(3, 4, "Trash", icon = Ic.delete, iconColor = Color(0xFFEF5350), value = if (trash == 0) "Empty" else trash.toString(), onClick = { nav.go(TrashRoute) })
         }
         Gap(14.dp)
 

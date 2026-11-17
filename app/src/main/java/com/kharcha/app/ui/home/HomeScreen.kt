@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kharcha.app.core.model.PayMethod
 import com.kharcha.app.core.model.Sheet
 import com.kharcha.app.core.model.SheetSort
 import com.kharcha.app.core.util.Currencies
@@ -349,7 +350,8 @@ fun HomeScreen() {
                                 MonthCard(dash, preferred, Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
                             }
                         }
-                        if (dash.methods.isNotEmpty()) {
+                        // Only worth a card once at least one item says how it was paid.
+                        if (dash.methods.any { it.method != PayMethod.NONE }) {
                             item(key = "dash-methods") {
                                 MethodsCard(dash, preferred, Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
                             }
