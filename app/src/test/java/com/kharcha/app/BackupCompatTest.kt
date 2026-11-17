@@ -13,7 +13,10 @@ import com.kharcha.app.data.KharchaFile
 import com.kharcha.app.data.KharchaJson
 import com.kharcha.app.data.readKharchaJson
 import com.kharcha.app.data.rescueAppData
+import com.kharcha.app.core.util.Calc
 import com.kharcha.app.domain.dues
+import com.kharcha.app.domain.titleOf
+import java.math.BigDecimal
 import com.kharcha.app.domain.equalShare
 import com.kharcha.app.domain.splitHeads
 import org.junit.Assert.assertEquals
@@ -77,6 +80,10 @@ class BackupCompatTest {
         assertTrue(data.people.isEmpty())
         assertTrue(data.goals.isEmpty())
         assertTrue(data.noSpendDays.isEmpty())
+        assertEquals("", dinner.expr)
+        assertEquals(false, dinner.loan)
+        assertTrue(data.repairedDays.isEmpty())
+        assertEquals(0, data.gemsSpent)
     }
 
     @Test
@@ -116,6 +123,24 @@ class BackupCompatTest {
         assertEquals(40000L, item.lent)
         // The form shows this bill as an equal split again.
         assertEquals(item.splits.single().amountMinor, equalShare(item.amountMinor, item.splits.size, item.covered))
+    }
+
+    @Test
+    fun loansSumsAndGemsBackupOpens() {
+        val data = open("v4-loans-sums-gems.json").data
+        // The sum typed on the keypad is kept as it was typed.
+        val water = data.items.first { it.id == "e1" }
+        assertEquals("20${Calc.TIMES}5${Calc.DIVIDE}2${Calc.MINUS}8", water.expr)
+        assertEquals(0, BigDecimal(42).compareTo(Calc.eval(water.expr)))
+        // Money lent and borrowed.
+        val lent = data.items.first { it.id == "l1" }
+        assertTrue(lent.loan)
+        assertEquals("p-rahul", lent.settles)
+        assertEquals("Lent to Rahul", data.titleOf(lent))
+        assertEquals(30000L, data.dues()["p-rahul"]?.get("INR"))
+        // The streak's bought-back days and the gems used.
+        assertEquals(listOf("2026-11-12"), data.repairedDays)
+        assertEquals(20, data.gemsSpent)
     }
 
     // ---- files this version has never seen ----

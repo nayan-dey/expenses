@@ -70,6 +70,8 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | All sheets added up in the preferred currency (home hero card) | Seen |
 | Items: expense, income, transfer between sheets | Seen |
 | Amount keypad with a calculator (+ − × ÷) | Seen |
+| The sum typed on the keypad is kept and shown again in the item's details | Written |
+| Category and "paid with" guessed from the note (your history, category names, a word list) | Written |
 | Any currency per item, exchange rate frozen on the item, rate editable per item | Written |
 | Exchange rates: downloaded, hand-set rates, converter screen | Written |
 | Categories: icon (about 190 to choose from), colour, expense or income | Seen |
@@ -85,26 +87,32 @@ every button having been pressed. Nothing has been tried on a real phone by an a
 | Trends: bars by day, week, month, year; balance over time | Seen |
 | CSV export (optionally a ZIP with pictures) and CSV import with category review | Written |
 | Backup to one file, restore, and merge (latest edit wins) | Written |
+| "Back up now": one tap writes a backup into Downloads/Kharcha; "Send a copy" opens the share sheet | Written, cannot be tested on an emulator |
 | Old backups keep opening: saved copies of them are opened by a test on every build | Written, the test passes in the cloud build |
 | Share one sheet as a file, merge it on another phone | Written |
 | Trash for sheets, categories and items; empties itself after 30 days | Seen |
 | Print a sheet or save it as PDF | Written, cannot be tested on an emulator |
 | App lock (fingerprint, face or PIN), block screenshots, sensitive mode | Written, lock cannot be tested on an emulator |
+| The eye that hides amounts is in every top bar; showing them again asks for a fingerprint or PIN | Written, the prompt cannot be tested on an emulator |
+| Home dashboard: Gullu, last 7 days as bars, this month by category (ring), against last month, how it was paid | Written |
 | Light and dark theme, phone (wallpaper) colours, haptics | Seen |
 | Six launcher icons to choose from | Written |
 | Friends: split a bill (who paid, split with), who owes whom, settle up, remind | Seen |
-| Split a bill that includes people you pay for (family, a guest): they count as heads, their parts stay with you | Written |
-| Split by typing each friend's amount ("Equally" or "Type amounts") | Written |
+| Split a bill that includes people you pay for (family, a guest): they count as heads, their parts stay with you | Seen |
+| Split by typing each friend's amount ("Equally" or "Type amounts") | Seen |
+| Money lent to or borrowed from a friend (a loan: not spending, shown under Friends) | Written |
 | Pay a friend back through any UPI app (amount and UPI address filled in) | Written, cannot be tested on an emulator |
 | "Paid with" on items: UPI, cash, card, bank | Seen |
 | Insights: last 7 or 30 days against the stretch before, with what a change is worth | Seen |
 | "Ask Gemini": a summary you read first, then share with Gemini or any app | Written, the hand-over cannot be tested on an emulator |
-| Daily streak drawn as a tree that grows through six stages | Seen |
+| Daily streak drawn as a tree that grows through six stages; its leaves go dry until today is logged | Seen |
+| Gullu, an animated mascot whose mood follows the day (app, widgets, notifications) | Written |
+| Gems: earned by logging, spent to bring back a streak broken in the last 3 days | Written |
 | Saving and investing goals: target, monthly amount, "done for this month" | Seen |
-| Daily reminder notification (weekly round-up on Sundays, monthly on the 1st) | Written, timing cannot be tested on an emulator |
+| Reminders one, three or six times a day (weekly round-up on Sundays, monthly on the 1st) | Written, timing cannot be tested on an emulator |
 | Daily automatic backup to Downloads/Kharcha (Android 10 and newer) | Written, not seen running |
-| Two home-screen widgets: "today" and "this month" | Written, not seen on a home screen |
-| Look: four typefaces, text size, six accent colours, pure black, corner style | Seen |
+| Four home-screen widgets: "today" and "this month" (2 by 2), wide (4 by 2) and large (4 by 4) with Gullu and the tree | Written, not seen on a home screen |
+| Look: six typefaces, text size, six accent colours, pure black, corner style | Seen |
 | Receipt scanning that fills in the form | Not started (see section 10) |
 | Live sync between phones | Not started (see section 10) |
 | Languages other than English | Not started |
@@ -125,6 +133,15 @@ Do not reopen these unless the owner does.
   Section 7 says how this is kept true and section 8 how it is checked.
 - **Splitting must stay easy.** One form, few taps, plain words. He often eats out with a friend
   and a family member: the family member is not a "friend who owes", their part is his to pay.
+- **Its own style, as engaging as possible.** The iOS app was only a starting point for the
+  features; the owner never asked for its look. Keep Material 3 Expressive as the building
+  blocks, and make the app feel alive: a mascot, charts on the home screen, gems and streaks in
+  the spirit of Duolingo. (Do not copy Duolingo's owl or artwork either: Gullu is our own.)
+- **Settings does not boast.** No "everything is unlocked" card. It was removed at his request.
+- **Hiding amounts is one tap from anywhere, and showing them needs proof.** The eye sits in
+  every top bar. Showing amounts again asks for a fingerprint, face or PIN. (He asked for the
+  prompt "to toggle on off"; hiding was left without a prompt because it only ever protects
+  him. Ask before changing that.)
 - **It is built around how the owner lives.** He pays almost everything by UPI, goes out with
   the same five or six friends and loses track of who owes whom, and spends on food and friends
   instead of saving. The app must make splitting a bill quick, show where money could be saved,
@@ -148,9 +165,13 @@ The identity is **"iris and marigold on ink"**. Tokens live in
   an iris "hero" card. **Marigold** is the accent for things waiting for attention (pending, a
   budget nearly used). Money in is mint green, money out is coral; red is kept for delete and
   "over budget". `KharchaExtras` holds the colours Material has no role for.
-- **Type** (`Type.kt`): variable fonts in `res/font`. Plus Jakarta Sans is the default; Manrope,
-  Figtree and Space Grotesk can be chosen. All four draw ₹ themselves, which is why they were
-  picked. Use `MaterialTheme.typography` or `KharchaType` (hero, figure, amount, eyebrow, key);
+- **Type** (`Type.kt`): fonts in `res/font`. Plus Jakarta Sans is the default; Manrope, Figtree,
+  Space Grotesk, Google Sans and Poppins can be chosen. All of them draw ₹ themselves. The
+  first four are variable fonts (one file, every weight). Google Sans (SIL Open Font License,
+  from Google Fonts) is cut down to Latin letters, digits and money signs with only its weight
+  axis kept, which takes it from 5 MB to about 130 KB; its weights stop at 700. Poppins has no
+  variable file, so it ships as four files (400 to 700), and it has no same-width digits, so
+  columns of money line up a little less neatly. Use `MaterialTheme.typography` or `KharchaType` (hero, figure, amount, eyebrow, key);
   both follow the chosen typeface. No one-off sizes, except the hero amount, which shrinks by
   length so it always fits one line. Never name a font family in a screen.
 - **Shape** (`Theme.kt`): soft and round, radii 8 / 14 / 22 / 28 / 36. A sheet is shown as its
@@ -161,21 +182,34 @@ The identity is **"iris and marigold on ink"**. Tokens live in
 - **Phone colours**: an optional setting swaps iris for the wallpaper palette (Android 12 and
   newer). Iris is the default.
 - **Look options** (Settings, Appearance; `Look` in `Theme.kt`): theme (automatic, light, dark),
-  pure black for the dark theme, six accent colours, four typefaces plus the phone's own, four
+  pure black for the dark theme, six accent colours, six typefaces plus the phone's own, four
   text sizes, three corner styles. The other accents are not separate palettes: `withAccent`
   turns every iris-tinted colour of the scheme to another hue, so one scheme stays the source.
 - **The tree** (`ui/habit/Tree.kt`): the streak as a plant in six stages, at 0, 1, 3, 7, 14 and
-  30 days. It is an illustration, drawn by hand like the charts.
+  30 days. It is an illustration, drawn by hand like the charts. Until today is logged its
+  leaves are drawn dry ("thirsty").
+- **Gullu** (`platform/HabitArt.kt`, moved by `ui/habit/Mascot.kt`): the mascot, a round marigold
+  money pot ("gullak" is Hindi for a clay piggy bank) with a coin slot, eyes and five moods:
+  happy, party, waiting, worried, sad (`domain/Habit.kt` decides which). It hops when the day
+  is logged and breathes and blinks while it waits. It is drawn ONCE, with Android's own
+  Canvas, so the app, the widgets and the notifications all show the same picture. It is our
+  own character: never make it resemble another app's mascot.
+- **The home dashboard** (`ui/home/DashboardCards.kt`, sums in `domain/Dashboard.kt`): one card
+  per question, each answered with a picture. Gullu (is today logged?), bars for the last
+  seven days, a ring for this month by category, this month against the same day of last
+  month, and one bar cut by the way of paying. Sheet names sit as chips above them so a sheet
+  is still one tap away.
 - **Widgets** cannot use Compose or the theme: they are XML layouts (`res/layout/widget_*.xml`)
-  in fixed brand colours, filled in by `platform/Widgets.kt`.
+  in fixed brand colours, filled in by `platform/Widgets.kt`. Gullu and the tree reach them as
+  bitmaps from `platform/HabitArt.kt`.
 - **The mark**: a ring chart with one slice lifted out. Launcher icon:
   `res/drawable/ic_launcher_foreground*.xml`; in the app: `KharchaLogo` in `Basics.kt`.
 
 Rules:
 
 - Use Google's real Material components. `ui/components/` only picks a component and fills its
-  slots; it draws nothing by hand except the three charts, the logo and the streak tree, which
-  Material has no component for.
+  slots; it draws nothing by hand except the three charts, the logo, the streak tree and Gullu,
+  which Material has no component for.
 - Inside a list operation (`map`, `joinToString`, `remember { }`) a composable such as `money()`
   cannot be called. Read `LocalSensitive.current` once outside and use `Money.format` inside.
 - Use the Expressive version where one exists: `HorizontalFloatingToolbar` with its FAB (the
@@ -188,7 +222,9 @@ Rules:
   library source (Material 3 `1.5.0-rc01`; the sources jar is on Google's Maven). There is no
   local compiler to catch a wrong guess.
 - Every amount shown on screen goes through `money()` or `moneySigned()` in `Basics.kt`, so
-  "Sensitive mode" can hide it.
+  "Sensitive mode" can hide it. `AppBar` puts the eye (`SensitiveToggle`) in every top bar by
+  itself; `setSensitive` is the one place that switches the mode, and it asks for a fingerprint
+  before showing amounts again.
 - Haptics go through `rememberHaptics()` and follow the phone's touch-feedback setting.
 - The root `Surface` sets the content colour once, so icons and text are never dark on dark.
 - Pickers are bottom sheets (`Sheets.kt`), not separate screens, so a form never loses its place.
@@ -208,10 +244,13 @@ One Gradle project at the repo root, single `app` module, package and app id `co
 - **One network call.** `data/RatesRepository.kt` downloads exchange rates. Nothing else uses
   the internet and nothing is ever uploaded. Keep it that way. ("Ask Gemini" and "Pay by UPI"
   hand text to another app through Android's share and view intents, when the person taps them.)
-- **Background work without a server**: one daily alarm (`platform/Reminders.kt`, `AlarmManager`,
-  inexact, no special permission). `DailyReceiver` calls `AppContainer.dailyTick`, which fills
-  in repeats, writes the automatic backup, posts the reminder, redraws the widgets and sets the
-  next alarm. `BootReceiver` sets the alarm again after a restart.
+- **Background work without a server**: one alarm at a time (`platform/Reminders.kt`,
+  `AlarmManager`, inexact, no special permission), always set for the next thing due: the next
+  reminder time (`platform/Nudges.kt`: one, three or six a day), the daily backup, or just after
+  midnight when a widget is on the home screen (so the widgets start the new day). `DailyReceiver`
+  calls `AppContainer.dailyTick`, which fills in repeats, writes the automatic backup, posts
+  the reminder that is due (never the same one twice: `Settings.lastNudge`), redraws the
+  widgets and sets the next alarm. `BootReceiver` sets the alarm again after a restart.
 - **Taps from outside** (a widget, a notification) reach `MainActivity` as an intent action
   listed in `platform/Launch`; `KharchaRoot` then opens the right screen.
 
@@ -225,9 +264,12 @@ One Gradle project at the repo root, single `app` module, package and app id `co
 | `data/Compat.kt` | Reading a backup or the data file from any version: the normal way first, then entry by entry so one bad entry never costs the rest |
 | `data/RatesRepository.kt`, `ImageStore.kt`, `Seed.kt` | Exchange rates; receipt pictures; default categories and sample data |
 | `domain/Summaries.kt` | Pure sums: totals, day groups, filters, search, stats, trends, budget, who owes whom, the streak |
+| `domain/Guess.kt` | Guessing the category and the way of paying from the words of a note |
+| `domain/Habit.kt` | The tree's stages, gems, bringing a broken streak back, Gullu's mood and words |
+| `domain/Dashboard.kt` | The sums behind the home screen's charts |
 | `domain/Splits.kt` | The sums of an equal split: heads (you, friends, people you pay for) and each friend's part |
 | `domain/Insights.kt` | The "where could I save" rules, the text for Ask Gemini, the quick look used by home, widgets and the reminder |
-| `platform/` | Android-only bits: app lock, launcher icon switch, printing, sharing, the daily alarm and notification (`Reminders`, `Nudges`), automatic backup (`AutoExport`), widgets (`Widgets`) |
+| `platform/` | Android-only bits: app lock, launcher icon switch, printing, sharing, the alarm and notifications (`Reminders`, `Nudges`), automatic and one-tap backup (`AutoExport`), widgets (`Widgets`), Gullu and the tree as pictures (`HabitArt`) |
 | `ui/<screen>/` | One folder per group of screens |
 | `ui/components/`, `ui/theme/`, `ui/icons/` | The design system |
 | `ui/nav/` | Routes (one key per screen), the `Navigator`, snackbar messages |
@@ -297,6 +339,20 @@ Pictures are JPEG files in `images/` beside them.
 - **Settling up** is an item with `settles` set (income = they paid you, expense = you paid
   them). It moves the cash balance and nothing else: like a transfer, it is not spending or
   income. `Item.isMovement` is true for both transfers and settle-ups.
+- **A loan** is a `settles` item with `loan = true`: an expense is money you gave a friend, an
+  income is money they gave you. The sums are exactly those of a repayment (it moves the cash
+  balance and the friend's balance, and is neither spending nor income); only the words differ
+  ("Lent to Rahul"). It is made from a friend's page ("I gave money", "I got money") or on the
+  item form ("Lent to a friend"), which is also how an old "pending" item becomes a loan.
+- **The typed sum** (`Item.expr`) is kept only when the amount was a sum ("20×5÷2"), with any
+  dangling last key removed. The form shows it again only if it still comes to the saved amount.
+- **Guesses are never stored.** `domain/Guess.kt` works the category and the way of paying out
+  from the note each time: your history first, then category names, then a built-in word list.
+  The form stops guessing a field once it has been picked by hand, and never guesses over a
+  saved item.
+- **Gems** earned are counted, not stored: 5 for every day logged and 15 more for every 7 days
+  logged. Only `gemsSpent` and `repairedDays` (days bought back, 20 gems each, within 3 days)
+  are stored. A bought-back day keeps the streak whole but earns no gems.
 - **Who owes whom** is never stored. `AppData.dues()` works it out from items every time:
   plus their share of bills you paid, minus your share of bills they paid, adjusted by
   repayments, per currency.
@@ -330,6 +386,11 @@ Pictures are JPEG files in `images/` beside them.
 - The walkthrough uses UI Automator (tap by on-screen text). Do not wait for the app to go
   "idle": the turning hero shape never stops, so that wait would hang.
 - When a screen or its wording changes, update the matching step in `WalkthroughTest.kt`.
+- The robot finds a thing, then taps it; if the screen redraws in between, the tap is retried
+  (`tap` in the test). The home screen is long now, so `goHome` scrolls it back to the top.
+- The app lock needs the `USE_BIOMETRIC` permission in the manifest. Without it Android throws
+  instead of showing its unlock sheet (this crashed the app once). `Biometrics.ask` can no
+  longer crash: every failure ends in `onResult(false)` or `onBroken`.
 - A build that compiles is not a screen that works. Say which screens were actually seen.
 - The signing key in `keystore/` is a throwaway so preview builds install over each other. It
   is public, like the repo, and is not a Play Store key.
@@ -372,6 +433,10 @@ Remove each one when it is answered, and record the answer in the right section.
 7. **Smarter insights.** The rules in `domain/Insights.kt` are fixed sums. Which categories count
    as "essential" is a fixed list of the default category ids; it should become a per-category
    switch if the owner's own categories are judged wrongly.
+9. **Reminders after an update.** `Settings.nudges` defaults to 6, so anyone who already had
+   the daily reminder on gets six a day after updating. The owner asked for "5-6"; if that
+   proves too many, the screen offers once, three times or six.
+10. **Gem prices.** 5 a day, 15 a week, 20 to mend a day, 3 days at most: picked by the agent.
 8. **Widgets follow the theme?** They use fixed brand colours. Following light and dark, or the
    chosen accent, needs separate layouts or Glance.
 6. **Shrinking the APK.** R8 is off (`isMinifyEnabled = false`). Turn it on once the app has
@@ -381,12 +446,12 @@ Remove each one when it is answered, and record the answer in the right section.
 
 Newest first. One line per change to this file.
 
-- 2026-11-17: In progress (third batch): the typed sum is kept on the item (`Item.expr`), the
-  category and "paid with" are guessed from the note (`domain/Guess.kt`), money lent or
-  borrowed is a loan (`Item.loan` on a `settles` item), the eye that hides amounts is in every
-  top bar and showing them again asks for a fingerprint, one-tap backup, Google Sans and
-  Poppins, and the app lock crash is fixed (`USE_BIOMETRIC` was missing). Sections 3 to 7 get
-  their full update when the batch is finished.
+- 2026-11-17: Third batch: the typed sum is kept (`Item.expr`), category and "paid with" are
+  guessed (`domain/Guess.kt`), loans (`Item.loan`), the eye in every top bar with a fingerprint
+  to show amounts, one-tap backup, Google Sans and Poppins, the app lock crash fixed
+  (`USE_BIOMETRIC`), Gullu the mascot, gems and streak rescue (`domain/Habit.kt`), reminders up
+  to six a day, wide and large widgets, the home dashboard (`domain/Dashboard.kt`), and the
+  "everything is unlocked" card removed from Settings. Sections 3 to 8 and 10 updated.
 - 2026-11-17: Split bills can include people you pay for (`Item.covered`) and can be typed by
   hand ("Equally" or "Type amounts"). Old backups are now guarded: `data/Compat.kt`, saved
   copies under `app/src/test/resources/backups`, `BackupCompatTest` in the cloud build.

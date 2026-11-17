@@ -170,6 +170,11 @@ class WalkthroughTest {
             dismissSystemDialogs()
             if (!device.hasObject(By.pkg(app))) launchApp()
             if (device.hasObject(By.pkg(app).desc("Settings")) && device.hasObject(By.pkg(app).text("Kharcha"))) return
+            // Already on the home screen but scrolled down among the charts: go back up instead of leaving.
+            if (device.hasObject(By.pkg(app).desc("Friends")) && device.hasObject(By.pkg(app).desc("Search"))) {
+                swipeDown()
+                return@repeat
+            }
             device.pressBack()
             pause(900)
         }
@@ -198,11 +203,15 @@ class WalkthroughTest {
         step("01 welcome") { shot("01-welcome") }
         step("02 start with sample data") {
             scrollAndTap("Try with sample data")
-            device.wait(Until.hasObject(By.pkg(app).text("Sheets")), 20000)
+            device.wait(Until.hasObject(By.pkg(app).desc("Settings")), 20000)
             pause(2500)
             shot("02-home")
         }
-        step("03 home, lower half") { swipeUp(); shot("03-home-more") }
+        step("03 home, the dashboard and the sheets") {
+            swipeUp(); shot("03-home-more")
+            swipeUp(); shot("03b-home-charts")
+            swipeUp(); shot("03c-home-sheets")
+        }
         step("04 search every sheet") {
             goHome()
             tapDesc("Search"); pause(1200)
@@ -234,10 +243,18 @@ class WalkthroughTest {
             pause(600)
             shot("18-new-item-sum")
             tapDesc("Hide the keypad"); pause(800)
+            // The note picks the category and the way of paying by itself.
+            type(0, "Uber to the office"); closeKeyboard(); pause(900)
+            shot("18b-category-picked")
             swipeUp()
             shot("19-new-item-more")
             tapDesc("Save"); pause(2000)
             shot("20-sheet-after-save")
+        }
+        step("20b the sum is kept") {
+            openSheet()
+            tapText("Uber to the office"); pause(1800)
+            shot("20b-details-sum-kept")
         }
 
         // ---- stats, trends, rates ----
@@ -275,13 +292,18 @@ class WalkthroughTest {
             goHome()
             tapDesc("Friends"); pause(1500); shot("30-friends-owed")
             tapText("Rahul"); pause(1500); shot("31-friend")
+            // Money lent to a friend: its own kind of entry, apart from spending.
+            tapExact("I gave money"); pause(1800)
+            listOf("5", "5", "5").forEach { tapExact(it) }
+            pause(600); shot("31b-lend")
+            tapDesc("Save"); pause(1800); shot("31c-friend-after-loan")
             tapExact("Settle up"); pause(1200); shot("32-settle")
         }
 
         // ---- insights, habit ----
         step("33 insights") {
             goHome()
-            tapText("Where could you save"); pause(2000); shot("33-insights"); swipeUp(); shot("34-insights-more")
+            scrollAndTap("Where could you save"); pause(2000); shot("33-insights"); swipeUp(); shot("34-insights-more")
             scrollAndTap("Ask Gemini"); pause(1500); shot("35-ask-gemini")
         }
         step("36 habit and goals") {

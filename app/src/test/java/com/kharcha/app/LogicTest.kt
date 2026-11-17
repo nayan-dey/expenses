@@ -16,6 +16,7 @@ import com.kharcha.app.domain.Mood
 import com.kharcha.app.domain.Streak
 import com.kharcha.app.domain.dues
 import com.kharcha.app.domain.gems
+import com.kharcha.app.domain.homeDashboard
 import com.kharcha.app.domain.moodOf
 import com.kharcha.app.domain.repairOffer
 import com.kharcha.app.domain.streak
@@ -235,5 +236,44 @@ class LogicTest {
         // Just after midnight (the widgets' own wake-up) and far too late for the morning one: nothing.
         assertNull(at(0, 5))
         assertNull(at(11, 30))
+    }
+
+    // ---- the home dashboard ----
+
+    @Test
+    fun theDashboardAddsUpTheWeekTheMonthAndHowItWasPaid() {
+        fun spend(id: String, daysAgo: Int, amount: Long, category: String?, method: PayMethod) = Item(
+            id = id, sheetId = "s", kind = Kind.EXPENSE, amountMinor = amount, currency = "INR",
+            at = Dates.millis(today.minusDays(daysAgo.toLong()), LocalTime.of(10, 0)), categoryId = category, method = method,
+        )
+        val data = AppData(
+            sheets = listOf(sheet),
+            categories = Seed.defaultCategories,
+            items = listOf(
+                spend("a", 0, 30000L, "cat-food", PayMethod.UPI),
+                spend("b", 1, 10000L, "cat-food", PayMethod.CASH),
+                spend("c", 3, 60000L, "cat-rent", PayMethod.UPI),
+                // Last month (17 October): counts for "last month", not for this one.
+                spend("d", 31, 50000L, "cat-food", PayMethod.UPI),
+                // Money lent is not spending and must not show up anywhere here.
+                Item(id = "l", sheetId = "s", kind = Kind.EXPENSE, amountMinor = 99900L, currency = "INR", at = noon, settles = "p", loan = true),
+            ),
+        )
+        val dash = data.homeDashboard(noon, "INR") { 1.0 }
+        assertEquals(7, dash.week.size)
+        assertEquals(30000L, dash.week.last().amount)
+        assertEquals(10000L, dash.week[5].amount)
+        assertEquals(100000L, dash.weekTotal)
+        assertEquals(100000L, dash.month)
+        assertEquals(50000L, dash.lastMonth)
+        assertEquals(50000L, dash.lastMonthByNow)
+        assertEquals(3, dash.count)
+        // Rent is the largest slice, then food.
+        assertEquals(listOf("cat-rent", "cat-food"), dash.categories.map { it.categoryId })
+        assertEquals(0.6f, dash.categories.first().share, 0.001f)
+        assertEquals(listOf(PayMethod.UPI, PayMethod.CASH), dash.methods.map { it.method })
+        assertEquals(90000L, dash.methods.first().amount)
+        assertFalse(dash.empty)
+        assertTrue(AppData(sheets = listOf(sheet)).homeDashboard(noon, "INR") { 1.0 }.empty)
     }
 }

@@ -37,12 +37,12 @@ data class Report(
 )
 
 /** An item with its cost to you in the report's currency. */
-private data class Spend(val item: Item, val amount: Long, val category: String, val essential: Boolean)
+internal data class Spend(val item: Item, val amount: Long, val category: String, val essential: Boolean)
 
 /** Categories that are hard to cut. Everything else is treated as a choice. */
 private val essentials = setOf("cat-rent", "cat-bills", "cat-internet", "cat-health", "cat-groceries")
 
-private fun AppData.spends(range: Range, currency: String, rate: (String) -> Double?, kind: Kind): List<Spend> {
+internal fun AppData.spends(range: Range, currency: String, rate: (String) -> Double?, kind: Kind): List<Spend> {
     val result = ArrayList<Spend>()
     for (sheet in liveSheets) {
         val factor = rate(sheet.currency) ?: continue

@@ -35,7 +35,14 @@ import com.kharcha.app.core.model.SheetSort
 import com.kharcha.app.core.util.Currencies
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.data.between
+import com.kharcha.app.domain.homeDashboard
+import com.kharcha.app.domain.gems
+import com.kharcha.app.domain.mascotLine
+import com.kharcha.app.domain.moodOf
 import com.kharcha.app.domain.quickLook
+import com.kharcha.app.domain.repairOffer
+import com.kharcha.app.ui.components.Chip
+import com.kharcha.app.ui.components.ChipRow
 import com.kharcha.app.ui.components.IconTile
 import com.kharcha.app.ui.components.KCard
 import com.kharcha.app.ui.habit.StreakTree
@@ -119,6 +126,13 @@ fun HomeScreen() {
         data.overview(data.liveSheets, preferred, now) { from -> app.rates.rate(from, preferred, rates) }
     }
     val look = remember(data, rates, preferred, now) { data.quickLook(now, preferred) { from -> rates.between(from, preferred) } }
+    // The dashboard: the charts' numbers, and Gullu's mood for the day.
+    val dash = remember(data, rates, preferred, now) { data.homeDashboard(now, preferred) { from -> rates.between(from, preferred) } }
+    val repair = remember(data, now) { data.repairOffer(now) }
+    val gems = remember(data) { data.gems().balance }
+    val mood = moodOf(look.streak, Dates.dateTimeOf(now).hour, repair)
+    /** Which of the seven day-bars is picked. 6 is today. */
+    var pickedDay by rememberSaveable { mutableStateOf(6) }
     val liveItems = remember(data.items) { data.items.count { it.deletedAt == null } }
     val remind = liveItems >= 10 && now - settings.lastBackupAt > BACKUP_REMINDER_MS
     val newest = remember(data.sheets) { data.liveSheets.maxByOrNull { it.editedAt } }
@@ -211,6 +225,17 @@ fun HomeScreen() {
                 }
 
                 else -> {
+                    // Gullu first: has today been logged?
+                    item(key = "gullu") {
+                        GulluCard(
+                            mood = mood,
+                            line = mascotLine(mood, look.streak, repair, gems),
+                            logged = look.streak.today,
+                            onOpen = { nav.go(HabitRoute) },
+                            onAdd = { newest?.let { nav.go(ItemRoute(it.id)) } },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                    }
                     item(key = "overview") {
                         HeroCard(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -240,6 +265,15 @@ fun HomeScreen() {
                         }
                     }
 
+                    // Straight to a sheet, without scrolling past the charts.
+                    if (sheets.size > 1) {
+                        item(key = "jump") {
+                            ChipRow(Modifier.padding(vertical = 4.dp)) {
+                                sheets.forEach { sheet -> Chip(sheet.name, { nav.go(SheetRoute(sheet.id)) }, icon = Ic.description) }
+                            }
+                        }
+                    }
+
                     // The daily check: the streak and its tree, friends, and where to save.
                     item(key = "today") {
                         Row(
@@ -250,7 +284,7 @@ fun HomeScreen() {
                         ) {
                             KCard(Modifier.weight(1f), onClick = { nav.go(HabitRoute) }, padding = 14.dp) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    StreakTree(look.streak.current, size = 54.dp)
+                                    StreakTree(look.streak.current, size = 54.dp, thirsty = !look.streak.today && look.streak.current > 0)
                                     Column {
                                         Eyebrow("Streak")
                                         Text(
@@ -297,6 +331,31 @@ fun HomeScreen() {
                             }
                         }
                     }
+                    // The month in pictures. Left out until there is something to draw.
+                    if (!dash.empty) {
+                        item(key = "dash-title") {
+                            Text("This month", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 22.dp, end = 16.dp, top = 14.dp, bottom = 4.dp))
+                        }
+                        item(key = "dash-week") {
+                            WeekCard(dash, preferred, pickedDay, { pickedDay = it }, Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
+                        }
+                        if (dash.categories.isNotEmpty()) {
+                            item(key = "dash-categories") {
+                                CategoriesCard(dash, preferred, onOpen = { newest?.let { nav.go(StatsRoute(it.id)) } }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
+                            }
+                        }
+                        if (dash.month > 0L || dash.lastMonthByNow > 0L) {
+                            item(key = "dash-month") {
+                                MonthCard(dash, preferred, Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
+                            }
+                        }
+                        if (dash.methods.isNotEmpty()) {
+                            item(key = "dash-methods") {
+                                MethodsCard(dash, preferred, Modifier.padding(horizontal = 16.dp, vertical = 5.dp))
+                            }
+                        }
+                    }
+
                     item(key = "insights") {
                         Banner(
                             title = "Where could you save?",

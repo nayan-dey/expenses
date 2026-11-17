@@ -85,7 +85,7 @@ fun SettingsScreen() {
         AppBar(onBack = { nav.back() }, title = "Settings")
 
         // The one thing worth doing often: a backup, in one tap.
-        KCard(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), padding = 14.dp) {
+        KCard(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), onClick = { nav.go(BackupRoute) }, padding = 14.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconTile(Ic.backup, Color(0xFF3F8EF5), size = 44.dp)
                 Column(Modifier.weight(1f)) {

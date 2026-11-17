@@ -21,19 +21,24 @@ over older ones and keep your data.
   multiply and divide.
 - **Any currency**: pay in dollars from a rupee sheet and it is converted. Rates download by
   themselves, or type your own.
-- **Categories** with icons and colours, suggested as you type a note.
+- **Categories** with icons and colours, picked for you from what you type in the note, along
+  with how you paid. The sum you typed on the keypad is kept with the item.
 - **Pending and repeating items**, receipt **pictures**, **search** and **filters**.
 - **Stats** by category, **trends** over time, a monthly **budget** per sheet.
 - **Friends**: split a bill equally or by typing each amount, count in people you are paying
   for yourself (family, a guest), see who owes whom, settle up, pay back through your UPI app.
+  Money you lent or borrowed is kept apart from spending.
+- **A dashboard**: the last seven days, this month by category, against last month, and how
+  you paid, as charts on the first screen.
 - **Insights**: where the last week or month went and what a small change would save, with a
   summary you can hand to Gemini.
-- **A daily habit**: a streak drawn as a tree that grows, a daily reminder, saving and investing
-  goals, and two home-screen widgets.
-- **Your look**: light, dark or pure black, six accent colours, four typefaces, text size.
+- **A daily habit**: Gullu the mascot, a streak drawn as a tree that grows, gems that can bring
+  a broken streak back, reminders through the day, saving and investing goals, and four
+  home-screen widgets.
+- **Your look**: light, dark or pure black, six accent colours, six typefaces, text size.
 - **Export and import** CSV, **backup** everything to one file, **share** a sheet as a file and
   merge it on another phone. A backup from any older version opens in every newer one.
-- **Privacy**: app lock, hidden amounts, blocked screenshots. The only thing the app goes online
+- **Privacy**: app lock, amounts hidden with one tap from any screen, blocked screenshots. The only thing the app goes online
   for is downloading exchange rates, and that can be switched off.
 
 ## For developers and AI agents
@@ -43,5 +48,5 @@ design system and how to build. Builds run on GitHub Actions; nothing needs to b
 
 ## Credits
 
-Material 3 and Material Symbols by Google (Apache 2.0). Plus Jakarta Sans by Tokotype (SIL Open
-Font License). Exchange rates from fawazahmed0/exchange-api, with open.er-api.com as a fallback.
+Material 3 and Material Symbols by Google (Apache 2.0). Plus Jakarta Sans by Tokotype, Manrope,
+Figtree, Space Grotesk, Google Sans and Poppins (all SIL Open Font License). Exchange rates from fawazahmed0/exchange-api, with open.er-api.com as a fallback.

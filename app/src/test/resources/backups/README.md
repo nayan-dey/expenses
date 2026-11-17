@@ -13,3 +13,4 @@ Each file here is the `kharcha.json` from a backup, exactly as one version of th
 | `v1-first-release.json` | the first version (commit `663cebb`): sheets, categories, items, transfers |
 | `v2-friends-and-goals.json` | the second batch (commit `de58352`): friends, splits, settling up, paid-with, goals, streak days |
 | `v3-covered-people.json` | split bills that include people you pay for (`Item.covered`) |
+| `v4-loans-sums-gems.json` | the typed sum (`Item.expr`), money lent and borrowed (`Item.loan`), bought-back streak days and gems used |
