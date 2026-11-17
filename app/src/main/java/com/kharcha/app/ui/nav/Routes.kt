@@ -29,6 +29,8 @@ sealed interface Route : NavKey
     val itemId: String? = null,
     val kind: String = "EXPENSE",
     val copyOf: String? = null,
+    /** Start a loan with this friend: `kind` EXPENSE = you gave them money, INCOME = they gave you money. */
+    val lendTo: String? = null,
 ) : Route
 
 @Serializable data class StatsRoute(val sheetId: String) : Route

@@ -277,6 +277,8 @@ fun AppData.overview(sheets: List<Sheet>, currency: String, now: Long, rate: (St
 
 /** What an item is called in a list: its category, or where a transfer went. */
 fun AppData.titleOf(item: Item): String = when {
+    item.settles != null && item.loan && item.kind == Kind.EXPENSE -> "Lent to ${person(item.settles)?.name ?: "a friend"}"
+    item.settles != null && item.loan -> "Borrowed from ${person(item.settles)?.name ?: "a friend"}"
     item.settles != null && item.kind == Kind.INCOME -> "${person(item.settles)?.name ?: "A friend"} paid you back"
     item.settles != null -> "You paid ${person(item.settles)?.name ?: "a friend"} back"
     item.isTransfer && item.kind == Kind.EXPENSE -> "Transfer to ${sheet(item.transferPeerSheetId)?.name ?: "another sheet"}"
@@ -355,6 +357,8 @@ fun AppData.streak(now: Long): Streak {
     // A day counts when an item was ADDED on it: the habit is opening the app and logging.
     items.forEach { if (it.createdAt > 0L) days.add(Dates.dateOf(it.createdAt)) }
     noSpendDays.forEach { text -> runCatching { java.time.LocalDate.parse(text) }.getOrNull()?.let { days.add(it) } }
+    // Days bought back with gems keep the chain whole (see domain/Habit.kt).
+    repairedDays.forEach { text -> runCatching { java.time.LocalDate.parse(text) }.getOrNull()?.let { days.add(it) } }
     val today = Dates.dateOf(now)
     var current = 0
     // Today not done yet does not break the streak: it can still be saved before midnight.

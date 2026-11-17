@@ -328,6 +328,12 @@ class Ledger(
         change { data -> data.copy(noSpendDays = if (on) (data.noSpendDays + day).distinct().sorted() else data.noSpendDays - day) }
     }
 
+    /** Buys missed days back with gems, so the streak carries on over them. */
+    fun repairStreak(days: List<String>, cost: Int) {
+        if (days.isEmpty()) return
+        change { data -> data.copy(repairedDays = (data.repairedDays + days).distinct().sorted(), gemsSpent = data.gemsSpent + cost.coerceAtLeast(0)) }
+    }
+
     // ---------------------------------------------------------------------------
     // Trash
     // ---------------------------------------------------------------------------
@@ -439,6 +445,9 @@ class Ledger(
                 people = fold(data.people, incoming.people, { it.id }, { it.editedAt }) { },
                 goals = fold(data.goals, incoming.goals, { it.id }, { it.editedAt }) { },
                 noSpendDays = (data.noSpendDays + incoming.noSpendDays).distinct().sorted(),
+                repairedDays = (data.repairedDays + incoming.repairedDays).distinct().sorted(),
+                // Gems spent on either phone stay spent.
+                gemsSpent = maxOf(data.gemsSpent, incoming.gemsSpent),
             )
             summary = MergeSummary(sheets, categories, items)
             merged

@@ -191,7 +191,8 @@ fun LockScreen() {
             app.lock.unlock()
             return
         }
-        Biometrics.ask(activity, "Unlock Kharcha") { ok -> if (ok) app.lock.unlock() }
+        // If Android cannot show its unlock sheet at all, let the owner in rather than lock them out for good.
+        Biometrics.ask(activity, "Unlock Kharcha", onBroken = { app.lock.unlock() }) { ok -> if (ok) app.lock.unlock() }
     }
     LaunchedEffect(Unit) { ask() }
 

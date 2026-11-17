@@ -185,6 +185,14 @@ data class Item(
     val covered: Int = 0,
     /** Set on a settling-up payment: the friend it squares things with. Not spending, not income. */
     val settles: String? = null,
+    /**
+     * With [settles]: this is money lent or borrowed, not a repayment. An EXPENSE is money you
+     * gave the friend (they owe you), an INCOME is money they gave you (you owe them). The sums
+     * are the same as for a repayment; only the words on screen differ.
+     */
+    val loan: Boolean = false,
+    /** The sum as it was typed on the keypad ("20×5÷2"), when it was a sum. Empty for a plain number. */
+    val expr: String = "",
     val createdAt: Long = 0,
     val editedAt: Long = 0,
     val deletedAt: Long? = null,
@@ -210,6 +218,10 @@ data class AppData(
     val goals: List<Goal> = emptyList(),
     /** Days ticked as "spent nothing today" (as "2026-11-14"), which keep the daily streak alive. */
     val noSpendDays: List<String> = emptyList(),
+    /** Missed days bought back with gems, so the streak carries on over them. They earn no gems. */
+    val repairedDays: List<String> = emptyList(),
+    /** Gems used up so far. Gems earned are never stored: they are counted from the days logged. */
+    val gemsSpent: Int = 0,
 ) {
     val liveSheets: List<Sheet> get() = sheets.filter { it.deletedAt == null }
     val livePeople: List<Person> get() = people.filter { it.deletedAt == null }
@@ -320,8 +332,14 @@ data class Settings(
     val lastBackupAt: Long = 0,
     val exportImages: Boolean = true,
     val print: PrintOptions = PrintOptions(),
-    /** A notification once a day: log your spending, keep the streak. */
+    /** Notifications through the day: log your spending, keep the streak. */
     val reminder: Boolean = false,
+    /** How many reminders a day: 1, 3 or 6. The last one comes at [reminderHour]:[reminderMinute]. */
+    val nudges: Int = 6,
+    /** Stop reminding for the rest of the day once something has been logged. */
+    val nudgeQuiet: Boolean = false,
+    /** The reminder that was shown last, as "2026-11-17 13:00", so one slot never shows twice. */
+    val lastNudge: String = "",
     val reminderHour: Int = 21,
     val reminderMinute: Int = 0,
     /** Save a backup into the phone's Downloads folder once a day (Android 10 and newer). */

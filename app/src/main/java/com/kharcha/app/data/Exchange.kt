@@ -165,6 +165,8 @@ class Exchange(private val ledger: Ledger, private val images: ImageStore, priva
         for (item in items) {
             val sheet = data.sheet(item.sheetId) ?: continue
             val type = when {
+                item.settles != null && item.loan && item.kind == Kind.EXPENSE -> "Lent"
+                item.settles != null && item.loan -> "Borrowed"
                 item.settles != null && item.kind == Kind.INCOME -> "Repaid to me"
                 item.settles != null -> "Repaid by me"
                 item.isTransfer && item.kind == Kind.EXPENSE -> "Transfer out"

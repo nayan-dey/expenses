@@ -10,6 +10,8 @@
 
     <!-- The optional daily reminder: showing a notification, and setting the alarm again after a restart. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- App lock: lets the app show Android's own fingerprint, face or PIN sheet. It reads no fingerprint itself. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Receipt photos are taken by the phone's own camera app, so no camera permission is needed. -->

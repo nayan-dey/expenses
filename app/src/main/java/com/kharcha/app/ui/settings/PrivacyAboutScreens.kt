@@ -54,7 +54,7 @@ fun PrivacyScreen() {
                         !on -> app.settings.update { it.copy(appLock = false) }
                         !canLock || activity == null -> messenger.show("Set a screen lock on the phone first (Android 11 or newer).")
                         // Prove it works before switching it on, so nobody gets locked out.
-                        else -> Biometrics.ask(activity, "Turn on app lock") { ok ->
+                        else -> Biometrics.ask(activity, "Turn on app lock", onBroken = { messenger.show("This phone could not show its unlock sheet, so app lock stays off.") }) { ok ->
                             if (ok) {
                                 app.lock.unlock()
                                 app.settings.update { it.copy(appLock = true) }

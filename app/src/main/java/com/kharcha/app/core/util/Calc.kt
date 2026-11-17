@@ -54,7 +54,19 @@ object Calc {
      * Works the text out. × and ÷ go before + and −, as on paper. Returns null when there is
      * nothing to work out, when it divides by zero, or when the answer is below zero.
      */
-    fun eval(expr: String): BigDecimal? {
+    fun eval(expr: String): BigDecimal? = compute(expr)?.takeIf { it.signum() >= 0 }
+
+    /** True when the sum can be worked out but comes to less than zero ("50−58"). */
+    fun belowZero(expr: String): Boolean = (compute(expr)?.signum() ?: 0) < 0
+
+    /** The sum without its dangling last key ("20×5÷" becomes "20×5"), as it is kept on an item. */
+    fun tidy(expr: String): String {
+        var text = expr.trim()
+        while (text.isNotEmpty() && (isOperator(text.last()) || text.last() == '.')) text = text.dropLast(1)
+        return text
+    }
+
+    private fun compute(expr: String): BigDecimal? {
         var text = expr.trim()
         while (text.isNotEmpty() && (isOperator(text.last()) || text.last() == '.')) text = text.dropLast(1)
         if (text.isEmpty()) return null
@@ -99,6 +111,6 @@ object Calc {
         for (i in signs.indices) {
             total = if (signs[i] == PLUS) total.add(terms[i + 1]) else total.subtract(terms[i + 1])
         }
-        return if (total.signum() < 0) null else total
+        return total
     }
 }

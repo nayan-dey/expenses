@@ -30,7 +30,7 @@ import kotlinx.serialization.json.longOrNull
  */
 
 /** The lists a data file can hold. Seeing one of these is how a bare data file is recognised. */
-private val DATA_KEYS = listOf("sheets", "categories", "items", "people", "goals", "noSpendDays")
+private val DATA_KEYS = listOf("sheets", "categories", "items", "people", "goals", "noSpendDays", "repairedDays")
 
 private fun JsonObject.text(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull
 private fun JsonObject.whole(name: String): Long? = (this[name] as? JsonPrimitive)?.longOrNull
@@ -50,6 +50,8 @@ private fun JsonObject.toAppData(): AppData = AppData(
     people = readList("people", Person.serializer()),
     goals = readList("goals", Goal.serializer()),
     noSpendDays = readList("noSpendDays", String.serializer()),
+    repairedDays = readList("repairedDays", String.serializer()),
+    gemsSpent = whole("gemsSpent")?.toInt()?.coerceAtLeast(0) ?: 0,
 )
 
 /** For the app's own data file on the phone, when the normal read fails. Null = not JSON at all. */
