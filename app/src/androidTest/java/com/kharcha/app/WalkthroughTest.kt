@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Configurator
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
@@ -56,15 +57,25 @@ class WalkthroughTest {
     }
 
     private fun tap(selector: BySelector, what: String) {
-        var node = find(selector)
-        if (node == null) {
-            // A system pop-up may have appeared in the meantime: clear it and look once more.
-            dismissSystemDialogs()
-            node = find(selector)
+        // The screen can redraw between finding a thing and tapping it (the hero shape never
+        // stops moving), which makes the thing found "stale". Find it again and retry.
+        repeat(4) {
+            var node = find(selector)
+            if (node == null) {
+                // A system pop-up may have appeared in the meantime: clear it and look once more.
+                dismissSystemDialogs()
+                node = find(selector)
+            }
+            if (node == null) error("not on screen: $what")
+            try {
+                node.click()
+                pause(1300)
+                return
+            } catch (stale: StaleObjectException) {
+                pause(600)
+            }
         }
-        if (node == null) error("not on screen: $what")
-        node.click()
-        pause(1300)
+        error("kept changing under the tap: $what")
     }
 
     private fun tapText(text: String) = tap(By.pkg(app).textContains(text), text)
@@ -135,7 +146,7 @@ class WalkthroughTest {
             val visible = runCatching {
                 device.findObjects(By.textStartsWith("")).mapNotNull { it.text }.filter { it.isNotBlank() }.take(30).joinToString(" | ")
             }.getOrDefault("")
-            log("FAIL  $name: ${t.message?.lineSequence()?.firstOrNull()}  [on screen: $visible]")
+            log("FAIL  $name: ${t.javaClass.simpleName}: ${t.message?.lineSequence()?.firstOrNull()}  [on screen: $visible]")
             runCatching { device.executeShellCommand("screencap -p $dir/fail-${name.take(2)}.png") }
         }
     }
