@@ -18,7 +18,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.platform.AutoExport
 import com.kharcha.app.platform.Reminders
+import com.kharcha.app.platform.SlotKind
 import com.kharcha.app.platform.dailyNudge
+import com.kharcha.app.platform.dueSlot
+import com.kharcha.app.platform.nudgeFor
+import com.kharcha.app.platform.nudgeSlots
+import com.kharcha.app.ui.components.ButtonGroup
+import com.kharcha.app.ui.components.GroupItem
+import com.kharcha.app.ui.components.GroupOption
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import com.kharcha.app.ui.components.AppBar
 import com.kharcha.app.ui.components.Btn
 import com.kharcha.app.ui.components.BtnSize
@@ -38,8 +49,8 @@ import com.kharcha.app.ui.nav.LocalNav
 import java.time.LocalTime
 
 /**
- * The daily reminder and the automatic backup. Both are run by the phone's own alarm clock,
- * once a day at the chosen time. No server is involved.
+ * Reminders and the automatic backup. Both are run by the phone's own alarm clock: one,
+ * three or six reminders a day, and one backup. No server is involved.
  */
 @Composable
 fun RemindersScreen() {
@@ -55,7 +66,7 @@ fun RemindersScreen() {
     fun turnOn() {
         app.settings.update { it.copy(reminder = true) }
         app.scheduleDaily()
-        messenger.show("Reminder set for ${Dates.time(Dates.millis(Dates.dateOf(app.now()), time))} every day")
+        messenger.show(if (settings.nudges <= 1) "Reminder set for ${Dates.time(Dates.millis(Dates.dateOf(app.now()), time))} every day" else "Reminders are on")
     }
     // From Android 13 an app has to ask before it may show notifications.
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -64,10 +75,13 @@ fun RemindersScreen() {
 
     ScreenColumn {
         AppBar(onBack = { nav.back() }, title = "Reminders and backup")
-        SectionHeader("Daily reminder")
+        SectionHeader("Reminders")
+        val counts = listOf(1, 3, 6)
+        val slots = nudgeSlots(settings)
+        fun clock(at: LocalTime): String = Dates.time(Dates.millis(Dates.dateOf(app.now()), at))
         KGroup {
             SwitchRow(
-                0, 2, "Remind me every day", settings.reminder,
+                0, 4, "Remind me", settings.reminder,
                 { on ->
                     when {
                         !on -> {
@@ -81,19 +95,52 @@ fun RemindersScreen() {
                 },
                 icon = Ic.notifications,
                 iconColor = Color(0xFFF59B42),
-                subtitle = "One notification a day to log your spending and keep your streak",
+                subtitle = "Notifications from Gullu to log your spending and keep your streak",
             )
-            SettingRow(1, 2, "Time", icon = Ic.schedule, iconColor = Color(0xFF3F8EF5), value = Dates.time(Dates.millis(Dates.dateOf(app.now()), time)), onClick = { pickTime = true })
+            GroupItem(1, 4) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("How many a day", style = MaterialTheme.typography.titleSmall)
+                    ButtonGroup(
+                        options = counts.map { GroupOption(if (it == 1) "Once" else "$it times") },
+                        selectedIndex = counts.indexOfLast { it <= settings.nudges.coerceAtLeast(1) }.coerceAtLeast(0),
+                        onSelect = { index ->
+                            app.settings.update { it.copy(nudges = counts[index]) }
+                            app.scheduleDaily()
+                        },
+                    )
+                    Text(
+                        "At " + slots.joinToString(", ") { clock(it.time) },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            SettingRow(
+                2, 4, if (settings.nudges <= 1) "Time" else "The main one",
+                icon = Ic.schedule, iconColor = Color(0xFF3F8EF5),
+                subtitle = if (settings.nudges <= 1) null else "The day's summary. The others come at fixed times.",
+                value = clock(time),
+                onClick = { pickTime = true },
+            )
+            SwitchRow(
+                3, 4, "Quiet once I have logged", settings.nudgeQuiet,
+                { on -> app.settings.update { it.copy(nudgeQuiet = on) } },
+                icon = Ic.spa,
+                iconColor = Color(0xFF2FA866),
+                subtitle = "After the first entry of the day, only the main one still comes",
+            )
         }
         Gap(8.dp)
         Btn(
             "Show me one now",
             {
                 if (Reminders.allowed(context)) {
-                    val nudge = dailyNudge(app.ledger.current, settings, rates, app.now())
-                    Reminders.show(context, nudge.title, nudge.text, nudge.action)
+                    val moment = app.now()
+                    val nudge = nudgeFor(dueSlot(settings, moment)?.kind ?: SlotKind.MAIN, app.ledger.current, settings, rates, moment)
+                        ?: dailyNudge(app.ledger.current, settings, rates, moment)
+                    Reminders.show(context, nudge.title, nudge.text, nudge.action, app.mascotPicture(moment))
                 } else {
-                    messenger.show("Switch the reminder on first, and allow notifications.")
+                    messenger.show("Switch reminders on first, and allow notifications.")
                 }
             },
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -101,7 +148,7 @@ fun RemindersScreen() {
             style = BtnStyle.TONAL,
             size = BtnSize.SM,
         )
-        Foot("Most days it asks you to log the day, or tells you what you spent. On Sundays it sums up the week, on the 1st the month, and on a goal's day it reminds you of the monthly amount. Android may deliver it a few minutes late to save battery.")
+        Foot("Through the day they ask about the usual moments: the morning, lunch, the afternoon, the evening, and a last call before midnight if nothing is logged yet. The main one sums up the day; on Sundays the week, on the 1st the month, and on a goal's day it reminds you of the monthly amount. Android may deliver them a few minutes late to save battery.")
 
         SectionHeader("Automatic backup")
         if (AutoExport.supported()) {

@@ -15,7 +15,14 @@ import com.kharcha.app.platform.AppLock
 import com.kharcha.app.platform.AutoExport
 import com.kharcha.app.platform.Reminders
 import com.kharcha.app.platform.Widgets
-import com.kharcha.app.platform.dailyNudge
+import com.kharcha.app.domain.moodOf
+import com.kharcha.app.domain.repairOffer
+import com.kharcha.app.domain.streak
+import com.kharcha.app.platform.HabitArt
+import com.kharcha.app.platform.dueSlot
+import com.kharcha.app.platform.nudgeFor
+import com.kharcha.app.platform.nudgeSlots
+import java.time.LocalTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -103,19 +110,46 @@ class AppContainer(context: Context) {
         }
     }
 
-    /** Sets tomorrow's wake-up when the reminder or the automatic backup needs one, and removes it otherwise. */
+    /**
+     * Sets the next wake-up: the next reminder time, the daily backup time, and (when a widget
+     * is on the home screen) just after midnight so the widgets start the new day. With none
+     * of those wanted, the alarm is removed.
+     */
     fun scheduleDaily() {
         val current = settings.current
-        if (current.reminder || current.autoExport) {
-            Reminders.schedule(appContext, current.reminderHour, current.reminderMinute)
-        } else {
-            Reminders.cancel(appContext)
+        val times = ArrayList<LocalTime>()
+        if (current.reminder) {
+            times += nudgeSlots(current).map { it.time }
+        } else if (current.autoExport) {
+            times += LocalTime.of(current.reminderHour.coerceIn(0, 23), current.reminderMinute.coerceIn(0, 59))
         }
+        if (Widgets.placed(appContext)) times += LocalTime.of(0, 5)
+        Reminders.scheduleNext(appContext, times)
     }
 
+    /** Posts the reminder that is due now, if one is and it has not been shown already. */
+    private fun nudgeIfDue() {
+        val current = settings.current
+        if (!current.reminder) return
+        val moment = now()
+        val slot = dueSlot(current, moment) ?: return
+        val stamp = "${Dates.iso(moment)} ${slot.time}"
+        if (stamp == current.lastNudge) return
+        settings.update { it.copy(lastNudge = stamp) }
+        val nudge = nudgeFor(slot.kind, ledger.current, current, rates.rates.value, moment) ?: return
+        Reminders.show(appContext, nudge.title, nudge.text, nudge.action, mascotPicture(moment))
+    }
+
+    /** Gullu's face for a notification, in the mood the day's logging calls for. */
+    fun mascotPicture(moment: Long): android.graphics.Bitmap? = runCatching {
+        val data = ledger.current
+        val mood = moodOf(data.streak(moment), Dates.dateTimeOf(moment).hour, data.repairOffer(moment))
+        HabitArt.mascot(mood, (72 * appContext.resources.displayMetrics.density).toInt().coerceIn(96, 320))
+    }.getOrNull()
+
     /**
-     * The daily wake-up (see platform/Reminders.kt): fill in repeats, write the automatic
-     * backup, post the reminder, redraw the widgets, and set the next wake-up.
+     * A wake-up (see platform/Reminders.kt): fill in repeats, write the automatic backup,
+     * post the reminder that is due, redraw the widgets, and set the next wake-up.
      * `done` must be called when finished: Android is waiting on it.
      */
     fun dailyTick(done: () -> Unit) {
@@ -125,10 +159,7 @@ class AppContainer(context: Context) {
                     loaded.first { it }
                     ledger.materializeRepeats()
                     autoExportIfDue()
-                    if (settings.current.reminder) {
-                        val nudge = dailyNudge(ledger.current, settings.current, rates.rates.value, now())
-                        Reminders.show(appContext, nudge.title, nudge.text, nudge.action)
-                    }
+                    nudgeIfDue()
                     Widgets.refresh(appContext)
                 }
                 runCatching { scheduleDaily() }

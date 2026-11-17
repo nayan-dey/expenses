@@ -10,4 +10,10 @@
     <string name="widget_spent_today">Spent today</string>
     <string name="widget_spent_month">This month</string>
     <string name="widget_add">New item</string>
+    <string name="widget_wide">Kharcha: today with Gullu</string>
+    <string name="widget_large">Kharcha: the whole day</string>
+    <string name="widget_wide_description">Gullu, what you spent today, your streak tree, and a button to add an item. Four cells wide.</string>
+    <string name="widget_large_description">Today, the month against your budget, your streak tree with the week and your gems, and the latest items. Four by four.</string>
+    <string name="widget_mascot">Gullu</string>
+    <string name="widget_tree">Your streak tree</string>
 </resources>

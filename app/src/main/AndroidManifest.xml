@@ -169,6 +169,30 @@
                 android:resource="@xml/widget_month_info" />
         </receiver>
 
+        <receiver
+            android:name=".platform.WideWidget"
+            android:exported="true"
+            android:label="@string/widget_wide">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_wide_info" />
+        </receiver>
+
+        <receiver
+            android:name=".platform.LargeWidget"
+            android:exported="true"
+            android:label="@string/widget_large">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_large_info" />
+        </receiver>
+
         <!-- Lets the camera app write a receipt photo into our folder, and lets us share exported files. -->
         <provider
             android:name="androidx.core.content.FileProvider"

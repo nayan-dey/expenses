@@ -7,9 +7,21 @@ import com.kharcha.app.core.model.Kind
 import com.kharcha.app.core.model.PayMethod
 import com.kharcha.app.core.model.Person
 import com.kharcha.app.core.model.Sheet
+import com.kharcha.app.core.model.Settings
 import com.kharcha.app.core.util.Calc
+import com.kharcha.app.core.util.Dates
 import com.kharcha.app.data.Seed
+import com.kharcha.app.domain.GEMS_PER_REPAIR
+import com.kharcha.app.domain.Mood
+import com.kharcha.app.domain.Streak
 import com.kharcha.app.domain.dues
+import com.kharcha.app.domain.gems
+import com.kharcha.app.domain.moodOf
+import com.kharcha.app.domain.repairOffer
+import com.kharcha.app.domain.streak
+import com.kharcha.app.platform.SlotKind
+import com.kharcha.app.platform.dueSlot
+import com.kharcha.app.platform.nudgeSlots
 import com.kharcha.app.domain.hints
 import com.kharcha.app.domain.titleOf
 import com.kharcha.app.domain.words
@@ -19,6 +31,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalTime
 
 /** The sums and guesses that need no phone: the keypad calculator, smart categories, loans. */
 class LogicTest {
@@ -127,5 +141,99 @@ class LogicTest {
         assertEquals("Borrowed from Rahul", data.titleOf(borrowed))
         assertEquals("Rahul paid you back", data.titleOf(repaid))
         assertTrue(lent.isMovement)
+    }
+
+    // ---- the streak, gems, and bringing a streak back ----
+
+    private val today: LocalDate = LocalDate.of(2026, 11, 17)
+    private val noon: Long = Dates.millis(today, LocalTime.NOON)
+
+    /** One item added on each of the given days (0 = today, 1 = yesterday, ...). */
+    private fun loggedOn(vararg daysAgo: Int): AppData = AppData(
+        sheets = listOf(sheet),
+        items = daysAgo.map { ago ->
+            val at = Dates.millis(today.minusDays(ago.toLong()), LocalTime.of(10, 0))
+            Item(id = "d$ago", sheetId = "s", kind = Kind.EXPENSE, amountMinor = 100L, currency = "INR", at = at, createdAt = at)
+        },
+    )
+
+    @Test
+    fun gemsAreCountedFromTheDaysLogged() {
+        assertEquals(0, AppData().gems().balance)
+        // Three days: 5 each.
+        assertEquals(15, loggedOn(0, 1, 2).gems().balance)
+        // Eight days: 5 each, and one bonus of 15 for the first seven.
+        assertEquals(55, loggedOn(0, 1, 2, 3, 4, 5, 6, 7).gems().balance)
+        // Gems that were used are gone, and the balance never goes below zero.
+        assertEquals(35, loggedOn(0, 1, 2, 3, 4, 5, 6, 7).copy(gemsSpent = 20).gems().balance)
+        assertEquals(0, loggedOn(0).copy(gemsSpent = 500).gems().balance)
+    }
+
+    @Test
+    fun aStreakThatBrokeYesterdayCanBeBoughtBack() {
+        // Logged four days running, then missed yesterday. Today is still open.
+        val data = loggedOn(2, 3, 4, 5)
+        assertEquals(0, data.streak(noon).current)
+        val offer = checkNotNull(data.repairOffer(noon))
+        assertEquals(listOf(today.minusDays(1).toString()), offer.days)
+        assertEquals(GEMS_PER_REPAIR, offer.cost)
+        assertEquals(4, offer.streakBefore)
+        assertEquals(5, offer.streakAfter)
+
+        // After paying, the streak carries on over the missed day and there is nothing left to mend.
+        val mended = data.copy(repairedDays = offer.days, gemsSpent = offer.cost)
+        assertEquals(5, mended.streak(noon).current)
+        assertNull(mended.repairOffer(noon))
+        // A bought-back day earns no gems of its own: 4 logged days are 20, minus the 20 spent.
+        assertEquals(0, mended.gems().balance)
+    }
+
+    @Test
+    fun nothingIsOfferedWhenThereIsNothingToMend() {
+        // The streak is alive (yesterday counts, today is open).
+        assertNull(loggedOn(1, 2, 3).repairOffer(noon))
+        // Too long ago: four missed days.
+        assertNull(loggedOn(5, 6, 7).repairOffer(noon))
+        // What broke was a single day: not worth gems.
+        assertNull(loggedOn(2).repairOffer(noon))
+        // Nothing logged at all.
+        assertNull(AppData().repairOffer(noon))
+        // Logged again today after a gap: the old run can still be joined to today's.
+        val offer = checkNotNull(loggedOn(0, 2, 3).repairOffer(noon))
+        assertEquals(4, offer.streakAfter)
+    }
+
+    @Test
+    fun theMascotsMoodFollowsTheDay() {
+        fun streak(current: Int, today: Boolean) = Streak(current, current, today, List(7) { false }, current)
+        assertEquals(Mood.HAPPY, moodOf(streak(2, true), 10, null))
+        assertEquals(Mood.PARTY, moodOf(streak(7, true), 10, null))
+        assertEquals(Mood.WAITING, moodOf(streak(2, false), 10, null))
+        assertEquals(Mood.WORRIED, moodOf(streak(2, false), 21, null))
+        assertEquals(Mood.SAD, moodOf(loggedOn(2, 3, 4).streak(noon), 10, loggedOn(2, 3, 4).repairOffer(noon)))
+    }
+
+    // ---- reminders through the day ----
+
+    @Test
+    fun remindersComeOnceThreeOrSixTimesADay() {
+        fun times(settings: Settings) = nudgeSlots(settings).map { it.time.toString() }
+        assertEquals(listOf("09:00", "13:00", "16:00", "19:00", "21:00", "22:30"), times(Settings()))
+        assertEquals(listOf("13:00", "18:30", "21:00"), times(Settings(nudges = 3)))
+        assertEquals(listOf("21:00"), times(Settings(nudges = 1)))
+        // A chosen time close to a fixed one replaces it instead of doubling up.
+        assertEquals(listOf("09:00", "13:10", "16:00", "19:00", "22:30"), times(Settings(reminderHour = 13, reminderMinute = 10)))
+        assertEquals(SlotKind.MAIN, nudgeSlots(Settings()).first { it.time == LocalTime.of(21, 0) }.kind)
+    }
+
+    @Test
+    fun theReminderThatIsDueIsTheLatestOneWhoseTimeHasCome() {
+        fun at(hour: Int, minute: Int) = dueSlot(Settings(), Dates.millis(today, LocalTime.of(hour, minute)))?.kind
+        assertEquals(SlotKind.LUNCH, at(13, 0))
+        assertEquals(SlotKind.LUNCH, at(13, 40))
+        assertEquals(SlotKind.MAIN, at(21, 5))
+        // Just after midnight (the widgets' own wake-up) and far too late for the morning one: nothing.
+        assertNull(at(0, 5))
+        assertNull(at(11, 30))
     }
 }

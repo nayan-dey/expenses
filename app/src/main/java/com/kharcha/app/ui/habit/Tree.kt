@@ -20,23 +20,10 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import com.kharcha.app.domain.treeName
+import com.kharcha.app.domain.treeStage
 import com.kharcha.app.ui.theme.KharchaTheme
 import com.kharcha.app.ui.theme.Marigold
-
-/** How grown the tree is for a streak of this many days: 0 (a seed) to 5 (a full tree with fruit). */
-fun treeStage(streak: Int): Int = when {
-    streak <= 0 -> 0
-    streak < 3 -> 1
-    streak < 7 -> 2
-    streak < 14 -> 3
-    streak < 30 -> 4
-    else -> 5
-}
-
-/** How many more days until the tree grows again, or null when it is fully grown. */
-fun daysToNextStage(streak: Int): Int? = listOf(1, 3, 7, 14, 30).firstOrNull { it > streak }?.let { it - streak }
-
-fun treeName(stage: Int): String = listOf("a seed", "a sprout", "a sapling", "a young tree", "a tree", "a full tree with fruit")[stage.coerceIn(0, 5)]
 
 /**
  * The streak, drawn as a tree. Every day you log something waters it, and it grows through
@@ -44,10 +31,20 @@ fun treeName(stage: Int): String = listOf("a seed", "a sprout", "a sapling", "a 
  * hand because Material has nothing like it; it sways a little so it feels alive.
  */
 @Composable
-fun StreakTree(streak: Int, modifier: Modifier = Modifier, size: Dp) {
+fun StreakTree(
+    streak: Int,
+    modifier: Modifier = Modifier,
+    size: Dp,
+    /** True while today has not been logged yet: the leaves go dry until it is watered. */
+    thirsty: Boolean = false,
+) {
     val stage = treeStage(streak)
-    val leaf = KharchaTheme.extras.income
-    val leafDeep = if (KharchaTheme.dark) Color(0xFF4FB07C) else Color(0xFF2E8B57)
+    val leaf = if (thirsty) Color(0xFFC2B45C) else KharchaTheme.extras.income
+    val leafDeep = when {
+        thirsty -> Color(0xFF9C9248)
+        KharchaTheme.dark -> Color(0xFF4FB07C)
+        else -> Color(0xFF2E8B57)
+    }
     val trunk = if (KharchaTheme.dark) Color(0xFFB08A63) else Color(0xFF7A5A3C)
     val soil = MaterialTheme.colorScheme.surfaceContainerHighest
     val sway by rememberInfiniteTransition(label = "tree").animateFloat(
@@ -59,7 +56,7 @@ fun StreakTree(streak: Int, modifier: Modifier = Modifier, size: Dp) {
     Canvas(
         modifier
             .size(size)
-            .semantics { contentDescription = "Your streak as ${treeName(stage)}" },
+            .semantics { contentDescription = "Your streak as ${treeName(stage)}" + if (thirsty) ", not watered yet today" else "" },
     ) {
         // Everything is drawn on a 100 by 100 grid, then scaled to the real size.
         val u = this.size.minDimension / 100f

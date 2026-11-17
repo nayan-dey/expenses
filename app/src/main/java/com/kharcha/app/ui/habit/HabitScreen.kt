@@ -38,7 +38,21 @@ import com.kharcha.app.core.util.Money
 import com.kharcha.app.core.util.newId
 import com.kharcha.app.data.between
 import com.kharcha.app.domain.report
+import com.kharcha.app.domain.GEMS_PER_DAY
+import com.kharcha.app.domain.GEMS_PER_REPAIR
+import com.kharcha.app.domain.GEMS_PER_WEEK
+import com.kharcha.app.domain.MAX_REPAIR_DAYS
+import com.kharcha.app.domain.daysToNextStage
+import com.kharcha.app.domain.gems
+import com.kharcha.app.domain.mascotLine
+import com.kharcha.app.domain.moodOf
+import com.kharcha.app.domain.repairOffer
 import com.kharcha.app.domain.streak
+import com.kharcha.app.domain.treeName
+import com.kharcha.app.domain.treeStage
+import com.kharcha.app.ui.components.CardKind
+import com.kharcha.app.ui.components.IconTile
+import androidx.compose.ui.graphics.Color
 import com.kharcha.app.ui.components.AppBar
 import com.kharcha.app.ui.components.Btn
 import com.kharcha.app.ui.components.BtnSize
@@ -93,6 +107,9 @@ fun HabitScreen() {
     val streak = remember(data, now) { data.streak(now) }
     val today = Dates.iso(now)
     val tickedToday = today in data.noSpendDays
+    val gems = remember(data) { data.gems() }
+    val repair = remember(data, now) { data.repairOffer(now) }
+    val mood = moodOf(streak, Dates.dateTimeOf(now).hour, repair)
     val stage = treeStage(streak.current)
     val next = daysToNextStage(streak.current)
     val currency = settings.preferredCurrency.ifBlank { data.liveSheets.firstOrNull()?.currency ?: Currencies.ofPhone() }
@@ -111,7 +128,10 @@ fun HabitScreen() {
 
         KCard(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), padding = 20.dp) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                StreakTree(streak.current, size = 190.dp)
+                MascotSays(mood, mascotLine(mood, streak, repair, gems.balance), Modifier.fillMaxWidth())
+                Gap(6.dp)
+                // Dry leaves until today is logged: it is watered by adding an item.
+                StreakTree(streak.current, size = 170.dp, thirsty = !streak.today && streak.current > 0)
                 Text(
                     when (streak.current) {
                         0 -> "No streak yet"
@@ -159,6 +179,33 @@ fun HabitScreen() {
             }
         }
 
+        // A streak that broke in the last few days can be bought back with gems.
+        if (repair != null) {
+            val enough = gems.balance >= repair.cost
+            KCard(Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth(), kind = CardKind.WARN, padding = 16.dp) {
+                Text("Your ${repair.streakBefore}-day streak broke", style = MaterialTheme.typography.titleMedium)
+                Gap(4.dp)
+                Text(
+                    (if (repair.days.size == 1) "You missed one day. " else "You missed ${repair.days.size} days. ") +
+                        (if (enough) "${repair.cost} gems bring it back, and it carries on at ${repair.streakAfter} days." else "Bringing it back costs ${repair.cost} gems and you have ${gems.balance}. Log ${(repair.cost - gems.balance + GEMS_PER_DAY - 1) / GEMS_PER_DAY} more days, or start again from today."),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (enough) {
+                    Gap(10.dp)
+                    Btn(
+                        "Use ${repair.cost} gems",
+                        {
+                            app.ledger.repairStreak(repair.days, repair.cost)
+                            haptics.confirm()
+                            messenger.show("Streak is back: ${repair.streakAfter} days")
+                        },
+                        icon = Ic.diamond,
+                        size = BtnSize.SM,
+                    )
+                }
+            }
+        }
+
         Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile("Best streak", if (streak.best == 1) "1 day" else "${streak.best} days", Modifier.weight(1f), icon = Ic.emoji_events)
             StatTile("Days logged", streak.total.toString(), Modifier.weight(1f), icon = Ic.today)
@@ -189,7 +236,20 @@ fun HabitScreen() {
                 Btn("Undo \"nothing spent\"", { app.ledger.setNoSpend(today, false) }, icon = Ic.undo, style = BtnStyle.TEXT, size = BtnSize.SM)
             }
         }
-        Foot("A day counts when you add at least one item on it, or tick \"nothing spent\". Miss a day and the tree starts again from a seed. The stages are at 1, 3, 7, 14 and 30 days.")
+        KCard(Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth(), padding = 14.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconTile(Ic.diamond, Color(0xFF4DB8D1), size = 44.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(if (gems.balance == 1) "1 gem" else "${gems.balance} gems", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "$GEMS_PER_DAY for every day you log, and $GEMS_PER_WEEK more for every 7 days. $GEMS_PER_REPAIR bring back a missed day.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Foot("A day counts when you add at least one item on it, or tick \"nothing spent\". Miss a day and the tree starts again from a seed, unless you buy the day back with gems within $MAX_REPAIR_DAYS days. The stages are at 1, 3, 7, 14 and 30 days.")
 
         SectionHeader("Goals")
         if (left > 0L && !hidden) {

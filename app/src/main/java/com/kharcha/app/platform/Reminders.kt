@@ -16,14 +16,17 @@ import androidx.core.content.ContextCompat
 import com.kharcha.app.KharchaApplication
 import com.kharcha.app.MainActivity
 import com.kharcha.app.R
+import android.graphics.Bitmap
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * The daily nudge. No server and no Firebase are involved: the phone's own alarm clock wakes
- * the app once a day, and the app posts a notification by itself.
+ * The reminders. No server and no Firebase are involved: the phone's own alarm clock wakes
+ * the app at the next reminder time, and the app posts a notification by itself. One, three
+ * or six times a day (see platform/Nudges.kt for the times and the words).
  *
- * The same daily wake-up also writes the automatic backup, when that is switched on.
+ * The same wake-ups also write the automatic backup and redraw the home-screen widgets.
  */
 object Reminders {
     const val CHANNEL = "daily"
@@ -37,11 +40,21 @@ object Reminders {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    /** Sets (or moves) the daily wake-up to the next time the clock shows `hour:minute`. */
-    fun schedule(context: Context, hour: Int, minute: Int) {
+    /**
+     * Sets the wake-up for whichever of the given times of day comes next (today, or the first
+     * one tomorrow). There is only ever one alarm: each wake-up sets the next.
+     */
+    fun scheduleNext(context: Context, times: List<LocalTime>) {
+        if (times.isEmpty()) {
+            cancel(context)
+            return
+        }
         val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        var next = LocalDateTime.now().withHour(hour.coerceIn(0, 23)).withMinute(minute.coerceIn(0, 59)).withSecond(0).withNano(0)
-        if (!next.isAfter(LocalDateTime.now())) next = next.plusDays(1)
+        val now = LocalDateTime.now()
+        // Half a minute of slack, so the wake-up that is running now does not set itself again.
+        val soon = now.plusSeconds(30)
+        val today = times.map { now.toLocalDate().atTime(it) }.filter { it.isAfter(soon) }.minByOrNull { it.toLocalTime().toSecondOfDay() }
+        val next = today ?: now.toLocalDate().plusDays(1).atTime(times.min())
         val at = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         // "Inexact": Android may deliver it a few minutes late to save battery. That needs no special permission.
         runCatching { manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, alarmIntent(context)) }
@@ -61,14 +74,14 @@ object Reminders {
 
     private fun ensureChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        val channel = NotificationChannel(CHANNEL, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = "One nudge a day to log your spending and keep your streak"
+        val channel = NotificationChannel(CHANNEL, "Reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "Nudges through the day to log your spending and keep your streak"
         }
         manager.createNotificationChannel(channel)
     }
 
     /** Shows the reminder. Tapping it opens the app; `action` says where (see MainActivity). */
-    fun show(context: Context, title: String, text: String, action: String) {
+    fun show(context: Context, title: String, text: String, action: String, picture: Bitmap? = null) {
         if (!allowed(context)) return
         ensureChannel(context)
         val open = PendingIntent.getActivity(
@@ -84,6 +97,8 @@ object Reminders {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setAutoCancel(true)
+            // Gullu's face beside the words, in the mood of the moment.
+            .apply { if (picture != null) setLargeIcon(picture) }
             .build()
         runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION, notification) }
     }
