@@ -31,7 +31,14 @@ import com.kharcha.app.core.util.Dates
 import com.kharcha.app.ui.components.AppBar
 import com.kharcha.app.ui.components.ChoiceSheet
 import com.kharcha.app.ui.components.CurrencySheet
+import com.kharcha.app.ui.components.Btn
+import com.kharcha.app.ui.components.BtnSize
 import com.kharcha.app.ui.components.Gap
+import com.kharcha.app.ui.components.IconTile
+import com.kharcha.app.ui.components.KCard
+import com.kharcha.app.ui.components.setSensitive
+import com.kharcha.app.ui.nav.LocalMessenger
+import androidx.compose.foundation.layout.fillMaxWidth
 import com.kharcha.app.ui.components.HeroCard
 import com.kharcha.app.ui.components.KGroup
 import com.kharcha.app.ui.components.KIcon
@@ -70,19 +77,26 @@ fun SettingsScreen() {
     var sortOpen by remember { mutableStateOf(false) }
     var currencyOpen by remember { mutableStateOf(false) }
     val preferred = settings.preferredCurrency.ifBlank { Currencies.ofPhone() }
+    val messenger = LocalMessenger.current
+    val backupNow = rememberBackupNow(fallback = { nav.go(BackupRoute) })
     val trash = data.sheets.count { it.deletedAt != null } + data.categories.count { it.deletedAt != null } + data.items.count { it.deletedAt != null }
 
     ScreenColumn {
         AppBar(onBack = { nav.back() }, title = "Settings")
 
-        // Where a paid app would have its "Pro" upsell.
-        HeroCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp), decoration = MaterialShapes.SoftBurst) {
+        // The one thing worth doing often: a backup, in one tap.
+        KCard(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), padding = 14.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                KIcon(Ic.workspace_premium, fill = true, size = 34.dp)
+                IconTile(Ic.backup, Color(0xFF3F8EF5), size = 44.dp)
                 Column(Modifier.weight(1f)) {
-                    Text("Everything is unlocked", style = MaterialTheme.typography.titleLarge)
-                    Text("Unlimited sheets, repeats, pictures, stats, trends, printing, app icons, widgets, friends. Nothing to buy, no account.", style = MaterialTheme.typography.bodyMedium)
+                    Text("Backup", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (settings.lastBackupAt == 0L) "Nothing saved yet" else "Last saved ${Dates.ago(settings.lastBackupAt, now)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                Btn("Back up now", backupNow, icon = Ic.backup, size = BtnSize.SM)
             }
         }
         Gap(12.dp)
@@ -134,10 +148,10 @@ fun SettingsScreen() {
         KGroup {
             SettingRow(0, 2, "Privacy", icon = Ic.lock, iconColor = Color(0xFFC63FE8), value = if (settings.appLock) "Locked" else null, onClick = { nav.go(PrivacyRoute) })
             SwitchRow(
-                1, 2, "Sensitive mode", settings.sensitive, { on -> app.settings.update { it.copy(sensitive = on) } },
+                1, 2, "Sensitive mode", settings.sensitive, { on -> setSensitive(app, context, messenger, hide = on) },
                 icon = Ic.visibility_off,
                 iconColor = Color(0xFFBE9A60),
-                subtitle = "Hide every amount behind dots",
+                subtitle = "Hide every amount behind dots. Showing them again asks for your fingerprint or PIN.",
             )
         }
         Gap(14.dp)

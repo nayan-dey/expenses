@@ -381,6 +381,12 @@ Remove each one when it is answered, and record the answer in the right section.
 
 Newest first. One line per change to this file.
 
+- 2026-11-17: In progress (third batch): the typed sum is kept on the item (`Item.expr`), the
+  category and "paid with" are guessed from the note (`domain/Guess.kt`), money lent or
+  borrowed is a loan (`Item.loan` on a `settles` item), the eye that hides amounts is in every
+  top bar and showing them again asks for a fingerprint, one-tap backup, Google Sans and
+  Poppins, and the app lock crash is fixed (`USE_BIOMETRIC` was missing). Sections 3 to 7 get
+  their full update when the batch is finished.
 - 2026-11-17: Split bills can include people you pay for (`Item.covered`) and can be typed by
   hand ("Equally" or "Type amounts"). Old backups are now guarded: `data/Compat.kt`, saved
   copies under `app/src/test/resources/backups`, `BackupCompatTest` in the cloud build.

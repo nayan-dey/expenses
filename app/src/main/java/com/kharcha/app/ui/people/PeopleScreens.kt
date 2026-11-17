@@ -175,7 +175,7 @@ fun PeopleScreen() {
                     }
                 }
             }
-            Foot("To split a bill: add the expense, then set \"Who paid\" and \"Split with\" on it. Tap a friend here to settle up.")
+            Foot("To split a bill: add the expense, then set \"Who paid\" and \"Split with\" on it. Tap a friend here to settle up, or to record money you lent them or borrowed.")
         }
     }
 
@@ -228,6 +228,12 @@ fun PersonScreen(key: PersonRoute) {
         )
         haptics.confirm()
         messenger.show(if (theyPaid) "Recorded: ${person.name} paid you back" else "Recorded: you paid ${person.name} back")
+    }
+
+    /** Opens the item form as a loan with this friend: "EXPENSE" = you gave, "INCOME" = you got. */
+    fun lend(kind: String) {
+        val sheet = data.liveSheets.maxByOrNull { it.editedAt }
+        if (sheet == null) messenger.show("Add a sheet first") else nav.go(ItemRoute(sheet.id, kind = kind, lendTo = person.id))
     }
 
     ScreenColumn {
@@ -312,6 +318,13 @@ fun PersonScreen(key: PersonRoute) {
             Foot("After paying in your UPI app, come back and tap \"Settle up\" to record it. Kharcha cannot see whether the payment went through.")
         }
 
+        // Money handed over with no bill behind it: a loan, kept apart from spending.
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Btn("I gave money", { lend("EXPENSE") }, icon = Ic.arrow_outward, style = BtnStyle.TONAL, size = BtnSize.SM)
+            Btn("I got money", { lend("INCOME") }, icon = Ic.arrow_downward, style = BtnStyle.TONAL, size = BtnSize.SM)
+        }
+        Foot("Lent ${person.name} money, or borrowed some? Record it here. It is not counted as spending or income, and it stays on this page until it is paid back.")
+
         SectionHeader("Shared · ${shared.size}")
         if (shared.isEmpty()) {
             Foot("Nothing shared yet. Add an expense and set \"Who paid\" or \"Split with\" to ${person.name}.")
@@ -322,7 +335,7 @@ fun PersonScreen(key: PersonRoute) {
                     GroupItem(index, shared.size, onClick = { nav.go(ItemRoute(item.sheetId, item.id)) }) {
                         RowContent(
                             title = data.titleOf(item),
-                            subtitle = listOfNotNull(Dates.medium(item.at), item.note.takeIf { it.isNotBlank() && item.settles == null }).joinToString(" · "),
+                            subtitle = listOfNotNull(Dates.medium(item.at), item.note.takeIf { it.isNotBlank() && (item.settles == null || item.loan) }).joinToString(" · "),
                             trailing = {
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(

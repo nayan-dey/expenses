@@ -264,13 +264,15 @@ enum class AppIcon(val label: String, val alias: String) {
     BLUEPRINT("Blueprint", "IconBlueprint"),
 }
 
-/** The typefaces to choose from. All but "System" are bundled, and all of them draw the rupee sign. */
+/** The typefaces to choose from. All but "System" are bundled, and all of them draw the rupee sign. New ones go anywhere: the file stores the name. */
 @Serializable
 enum class FontChoice(val label: String) {
     JAKARTA("Plus Jakarta Sans"),
     MANROPE("Manrope"),
     FIGTREE("Figtree"),
     SPACE("Space Grotesk"),
+    GOOGLE("Google Sans"),
+    POPPINS("Poppins"),
     SYSTEM("Phone's own font"),
 }
 

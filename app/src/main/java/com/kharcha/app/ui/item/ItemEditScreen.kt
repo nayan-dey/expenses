@@ -57,6 +57,7 @@ import com.kharcha.app.core.util.Money
 import com.kharcha.app.core.util.newId
 import com.kharcha.app.domain.MAX_COVERED
 import com.kharcha.app.domain.equalShare
+import com.kharcha.app.domain.hints
 import com.kharcha.app.domain.splitHeads
 import com.kharcha.app.platform.Share
 import com.kharcha.app.ui.components.AppBar
@@ -71,6 +72,7 @@ import com.kharcha.app.ui.components.ChoiceSheet
 import com.kharcha.app.ui.components.CurrencySheet
 import com.kharcha.app.ui.components.DateDialog
 import com.kharcha.app.ui.components.FieldKind
+import com.kharcha.app.ui.components.FriendSheet
 import com.kharcha.app.ui.components.Foot
 import com.kharcha.app.ui.components.Gap
 import com.kharcha.app.ui.components.GroupItem
@@ -140,11 +142,24 @@ private data class Draft(
     val covered: Int = 0,
     /** Hand-typed shares, friend id to amount text. */
     val shares: Map<String, String> = emptyMap(),
-    /** Set when this is a settling-up payment with a friend. */
+    /** Set when this is a settling-up payment with a friend, or money lent or borrowed. */
     val settles: String? = null,
+    /** With [settles]: money lent (expense) or borrowed (income), not a repayment. */
+    val loan: Boolean = false,
+    /** True once the category was chosen by hand. Until then it is guessed from the note. */
+    val categoryPicked: Boolean = false,
+    /** True once "Paid with" was chosen by hand. Until then it is guessed. */
+    val methodPicked: Boolean = false,
 ) {
     val kind: Kind get() = if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE
     val isTransfer: Boolean get() = mode == TRANSFER
+}
+
+/** What to show in the amount box for a saved item: the sum as it was typed, if it still comes to the saved amount. */
+private fun typedSum(item: Item): String {
+    val sum = item.expr.takeIf { it.isNotBlank() } ?: return Money.plain(item.amountMinor, item.currency)
+    val value = Calc.eval(sum)?.let { Money.toMinor(it, item.currency) }
+    return if (value == item.amountMinor) sum else Money.plain(item.amountMinor, item.currency)
 }
 
 /** The category most recently used for this kind of item in a sheet, to start a new item with. */
@@ -201,7 +216,7 @@ fun ItemEditScreen(key: ItemRoute) {
                     val into = if (template.kind == Kind.INCOME) template else other
                     Draft(
                         mode = TRANSFER,
-                        expr = Money.plain(template.amountMinor, template.currency),
+                        expr = typedSum(template),
                         currency = template.currency,
                         note = template.note,
                         sheetId = out.sheetId,
@@ -214,7 +229,7 @@ fun ItemEditScreen(key: ItemRoute) {
                 }
                 template != null -> Draft(
                     mode = template.kind.name,
-                    expr = Money.plain(template.amountMinor, template.currency),
+                    expr = typedSum(template),
                     currency = template.currency,
                     note = template.note,
                     merchant = template.merchant,
@@ -232,16 +247,29 @@ fun ItemEditScreen(key: ItemRoute) {
                     covered = template.covered.coerceIn(0, MAX_COVERED),
                     shares = template.splits.associate { it.personId to Money.plain(it.amountMinor, template.currency) },
                     settles = if (existing != null) template.settles else null,
+                    loan = existing != null && template.loan,
+                    // A saved item keeps what it was given: no guessing over it.
+                    categoryPicked = true,
+                    methodPicked = true,
                 )
                 else -> {
-                    val mode = if (key.kind in setOf("EXPENSE", "INCOME", TRANSFER)) key.kind else "EXPENSE"
+                    // Opened from a friend's page as "I gave money" or "I got money": a loan with them.
+                    val lending = key.lendTo != null
+                    val mode = when {
+                        lending -> if (key.kind == "INCOME") "INCOME" else "EXPENSE"
+                        key.kind in setOf("EXPENSE", "INCOME", TRANSFER) -> key.kind
+                        else -> "EXPENSE"
+                    }
                     Draft(
                         mode = mode,
                         currency = start.sheet(key.sheetId)?.currency ?: Currencies.ofPhone(),
-                        categoryId = if (mode == TRANSFER) null else start.lastCategory(key.sheetId, if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE),
+                        categoryId = if (mode == TRANSFER || lending) null else start.lastCategory(key.sheetId, if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE),
                         sheetId = key.sheetId,
                         at = now,
-                        method = app.settings.current.lastMethod,
+                        // A sheet called "Cash" starts on cash, one called "Bank" on UPI; otherwise whatever was used last.
+                        method = start.hints().method("", "", start.sheet(key.sheetId)?.name.orEmpty()) ?: app.settings.current.lastMethod,
+                        settles = key.lendTo,
+                        loan = lending,
                     )
                 }
             },
@@ -261,6 +289,7 @@ fun ItemEditScreen(key: ItemRoute) {
     var askRate by remember { mutableStateOf(false) }
     var pickPayer by remember { mutableStateOf(false) }
     var pickSplit by remember { mutableStateOf(false) }
+    var pickLoan by remember { mutableStateOf(false) }
     /** The friend whose share is being typed, or null. */
     var askShare by remember { mutableStateOf<String?>(null) }
     var viewing by remember { mutableStateOf<String?>(null) }
@@ -273,6 +302,18 @@ fun ItemEditScreen(key: ItemRoute) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) { AppBar(onBack = { nav.back() }, title = "New item") }
         return
     }
+
+    // What past items and the built-in word list say about a note (domain/Guess.kt).
+    val hints = remember(data.items, data.categories) { data.hints() }
+
+    /** After the note, merchant, kind or sheet changed: guess again whatever has not been chosen by hand. */
+    fun guessed(next: Draft): Draft {
+        if (!isNew || next.isTransfer || next.settles != null) return next
+        val category = if (next.categoryPicked) null else hints.category(next.kind, next.note, next.merchant)
+        val method = if (next.methodPicked) null else hints.method(next.note, next.merchant, data.sheet(next.sheetId)?.name.orEmpty())
+        return next.copy(categoryId = category ?: next.categoryId, method = method ?: next.method)
+    }
+    val guessedCategory = if (isNew && !draft.categoryPicked && !draft.isTransfer) hints.category(draft.kind, draft.note, draft.merchant) else null
 
     val amount: BigDecimal? = remember(draft.expr) { Calc.eval(draft.expr) }
     val amountMinor = amount?.let { Money.toMinor(it, draft.currency) }
@@ -336,6 +377,7 @@ fun ItemEditScreen(key: ItemRoute) {
                 pending = draft.pending,
                 repeat = draft.repeat,
                 pictures = draft.images,
+                expr = Calc.tidy(draft.expr).takeIf { Calc.hasOperator(it) }.orEmpty(),
             )
         } else {
             app.ledger.saveItem(
@@ -359,6 +401,8 @@ fun ItemEditScreen(key: ItemRoute) {
                     splits = shareMinor.filterValues { it > 0L }.map { (id, share) -> Split(id, share) },
                     covered = if (splitting && draft.equal) draft.covered else 0,
                     settles = draft.settles,
+                    loan = draft.settles != null && draft.loan,
+                    expr = Calc.tidy(draft.expr).takeIf { Calc.hasOperator(it) }.orEmpty(),
                     createdAt = existing?.createdAt ?: 0L,
                 ),
             )
@@ -396,6 +440,7 @@ fun ItemEditScreen(key: ItemRoute) {
         AppBar(
             onBack = { nav.back() },
             title = when {
+                draft.settles != null && draft.loan -> if (draft.kind == Kind.EXPENSE) "Lent" else "Borrowed"
                 isNew -> "New item"
                 draft.settles != null -> "Settling up"
                 draft.isTransfer -> "Transfer"
@@ -424,9 +469,12 @@ fun ItemEditScreen(key: ItemRoute) {
                     onSelect = { index ->
                         val mode = modes[index].first
                         if (mode != draft.mode) {
-                            draft = draft.copy(
-                                mode = mode,
-                                categoryId = if (mode == TRANSFER) null else data.lastCategory(sheet.id, if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE),
+                            draft = guessed(
+                                draft.copy(
+                                    mode = mode,
+                                    categoryId = if (mode == TRANSFER) null else data.lastCategory(sheet.id, if (mode == "INCOME") Kind.INCOME else Kind.EXPENSE),
+                                    categoryPicked = false,
+                                ),
                             )
                         }
                     },
@@ -464,6 +512,7 @@ fun ItemEditScreen(key: ItemRoute) {
                         }
                     }
                     val line = when {
+                        amountMinor == null && Calc.belowZero(draft.expr) -> "This comes to less than zero"
                         amountMinor == null && draft.expr.isNotEmpty() -> "This sum has no answer"
                         amountMinor == null -> Money.format(0, draft.currency)
                         else -> (if (Calc.hasOperator(draft.expr)) "= " else "") + Money.signed(amountMinor, draft.currency, if (draft.isTransfer) Kind.INCOME else draft.kind)
@@ -499,7 +548,7 @@ fun ItemEditScreen(key: ItemRoute) {
             Gap(10.dp)
             KField(
                 draft.note,
-                { draft = draft.copy(note = it) },
+                { draft = guessed(draft.copy(note = it)) },
                 "Notes",
                 Modifier
                     .padding(horizontal = 16.dp)
@@ -517,11 +566,23 @@ fun ItemEditScreen(key: ItemRoute) {
                     Foot("Arrives as ${Money.format(Money.convert(amountMinor, draft.currency, toSheet.currency, rateToTarget), toSheet.currency)} in ${toSheet.name}.")
                 }
             } else if (draft.settles != null) {
+                val friend = data.person(draft.settles)?.name ?: "A friend"
                 KGroup {
-                    SettingRow(0, 2, "Settling up with", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = data.person(draft.settles)?.name ?: "A friend")
+                    if (draft.loan) {
+                        SettingRow(0, 2, if (draft.kind == Kind.EXPENSE) "Lent to" else "Borrowed from", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = friend, onClick = { pickLoan = true })
+                    } else {
+                        SettingRow(0, 2, "Settling up with", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = friend)
+                    }
                     SettingRow(1, 2, "Sheet", icon = Ic.description, iconColor = Color(0xFF6C7CF5), value = sheet.name, onClick = { pickSheet = "from" })
                 }
-                Foot(if (draft.kind == Kind.INCOME) "They paid you back. This is not income: it only squares things between you." else "You paid them back. This is not spending: it only squares things between you.")
+                Foot(
+                    when {
+                        draft.loan && draft.kind == Kind.EXPENSE -> "$friend owes you this. It leaves your balance now, but it is not spending. It stays under Friends until they pay you back; then tap \"Settle up\" there."
+                        draft.loan -> "You owe $friend this. It reaches your balance now, but it is not income. It stays under Friends until you pay it back."
+                        draft.kind == Kind.INCOME -> "They paid you back. This is not income: it only squares things between you."
+                        else -> "You paid them back. This is not spending: it only squares things between you."
+                    },
+                )
             } else {
                 val category = data.category(draft.categoryId)
                 val rows = if (sheet.showMerchant) 3 else 2
@@ -534,13 +595,17 @@ fun ItemEditScreen(key: ItemRoute) {
                         Column {
                             RowContent(
                                 title = "Category",
+                                // Says so when the app chose it, so a wrong guess is noticed.
+                                subtitle = if (guessedCategory != null && guessedCategory == draft.categoryId) "Picked from your note" else null,
                                 leading = { CategoryDot(category, size = 40.dp) },
                                 trailing = {
                                     Text(category?.name ?: "No category", style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 },
                             )
                             if (sheet.showSuggestions) {
-                                val ids = remember(data.items, data.categories, sheet.id, draft.kind, draft.note) { data.suggestions(sheet.id, draft.kind, draft.note) }
+                                val ids = remember(data.items, data.categories, sheet.id, draft.kind, draft.note, guessedCategory) {
+                                    (listOfNotNull(guessedCategory) + data.suggestions(sheet.id, draft.kind, draft.note)).distinct().take(8)
+                                }
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -553,7 +618,7 @@ fun ItemEditScreen(key: ItemRoute) {
                                         if (option != null) {
                                             Chip(
                                                 option.name,
-                                                { draft = draft.copy(categoryId = id) },
+                                                { draft = draft.copy(categoryId = id, categoryPicked = true) },
                                                 selected = id == draft.categoryId,
                                                 icon = Ic.of(option.icon),
                                                 fillIcon = true,
@@ -577,12 +642,15 @@ fun ItemEditScreen(key: ItemRoute) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 IconTile(Ic.account_balance_wallet, Color(0xFF32B8C6))
                                 Text("Paid with", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                if (isNew && !draft.methodPicked && draft.method != PayMethod.NONE) {
+                                    Text("Picked for you", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                                }
                             }
                             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(PayMethod.UPI, PayMethod.CASH, PayMethod.CARD, PayMethod.BANK).forEach { method ->
                                     Chip(
                                         method.label,
-                                        { draft = draft.copy(method = if (draft.method == method) PayMethod.NONE else method) },
+                                        { draft = draft.copy(method = if (draft.method == method) PayMethod.NONE else method, methodPicked = true) },
                                         selected = draft.method == method,
                                     )
                                 }
@@ -600,7 +668,7 @@ fun ItemEditScreen(key: ItemRoute) {
                 KGroup {
                     val rows = when {
                         draft.payer != null -> 1
-                        friends.isEmpty() -> 2
+                        friends.isEmpty() -> 3
                         draft.equal -> 4 + friends.size
                         else -> 3 + friends.size
                     }
@@ -617,6 +685,10 @@ fun ItemEditScreen(key: ItemRoute) {
                             },
                             onClick = { pickSplit = true },
                         )
+                        if (friends.isEmpty()) {
+                            // Money handed to a friend that should come back: not spending at all.
+                            SettingRow(2, rows, "Lent to a friend", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = "No", onClick = { pickLoan = true })
+                        }
                         if (friends.isNotEmpty()) {
                             // The two ways to split: the app divides it, or you type each friend's part.
                             GroupItem(2, rows) {
@@ -701,6 +773,13 @@ fun ItemEditScreen(key: ItemRoute) {
                             },
                         )
                     }
+                }
+            }
+
+            if (draft.mode == "INCOME" && draft.settles == null) {
+                Gap(12.dp)
+                KGroup {
+                    SettingRow(0, 1, "Borrowed from a friend", icon = Ic.handshake, iconColor = Color(0xFF2FA866), value = "No", onClick = { pickLoan = true })
                 }
             }
 
@@ -825,7 +904,7 @@ fun ItemEditScreen(key: ItemRoute) {
             kind = draft.kind,
             categories = data.categories,
             selectedId = draft.categoryId,
-            onPick = { draft = draft.copy(categoryId = it) },
+            onPick = { draft = draft.copy(categoryId = it, categoryPicked = true) },
             onDismiss = { pickCategory = false },
             onNew = { nav.go(CategoryRoute(kind = draft.kind.name)) },
         )
@@ -834,7 +913,7 @@ fun ItemEditScreen(key: ItemRoute) {
         val known = remember(data.items) {
             data.items.filter { it.merchant.isNotBlank() }.groupingBy { it.merchant }.eachCount().entries.sortedByDescending { it.value }.map { it.key }
         }
-        MerchantSheet(draft.merchant, known, { draft = draft.copy(merchant = it) }, { pickMerchant = false })
+        MerchantSheet(draft.merchant, known, { draft = guessed(draft.copy(merchant = it)) }, { pickMerchant = false })
     }
     val whichSheet = pickSheet
     if (whichSheet != null) {
@@ -842,7 +921,7 @@ fun ItemEditScreen(key: ItemRoute) {
             title = if (!draft.isTransfer) "Sheet" else if (whichSheet == "from") "From" else "To",
             sheets = data.liveSheets,
             selectedId = if (whichSheet == "from") sheet.id else toSheet?.id,
-            onPick = { picked -> draft = if (whichSheet == "from") draft.copy(sheetId = picked.id) else draft.copy(toSheetId = picked.id) },
+            onPick = { picked -> draft = if (whichSheet == "from") guessed(draft.copy(sheetId = picked.id)) else draft.copy(toSheetId = picked.id) },
             onDismiss = { pickSheet = null },
         )
     }
@@ -901,6 +980,32 @@ fun ItemEditScreen(key: ItemRoute) {
                 draft = draft.copy(splitWith = draft.splitWith + person.id)
             },
             onDismiss = { pickSplit = false },
+        )
+    }
+    if (pickLoan) {
+        val gave = draft.kind == Kind.EXPENSE
+        FriendSheet(
+            title = if (gave) "Who did you give it to?" else "Who gave it to you?",
+            none = "Not a loan",
+            noneNote = if (gave) "An ordinary expense" else "Ordinary income",
+            friendNote = if (gave) "They owe you this" else "You owe them this",
+            people = data.livePeople,
+            selectedId = if (draft.loan) draft.settles else null,
+            onPick = { id ->
+                draft = if (id == null) {
+                    draft.copy(settles = null, loan = false, categoryId = data.lastCategory(sheet.id, draft.kind), categoryPicked = false)
+                } else {
+                    // A loan is real money that moved, so it is not "pending", and it has no category or split.
+                    draft.copy(settles = id, loan = true, payer = null, splitWith = emptyList(), categoryId = null, pending = false)
+                }
+            },
+            onAdd = { name ->
+                val person = Person(id = newId(), name = name)
+                app.ledger.savePerson(person)
+                draft = draft.copy(settles = person.id, loan = true, payer = null, splitWith = emptyList(), categoryId = null, pending = false)
+                pickLoan = false
+            },
+            onDismiss = { pickLoan = false },
         )
     }
     val sharing = askShare

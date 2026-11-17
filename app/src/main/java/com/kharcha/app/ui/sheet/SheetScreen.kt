@@ -58,6 +58,7 @@ import com.kharcha.app.ui.components.BtnStyle
 import com.kharcha.app.ui.components.ButtonGroup
 import com.kharcha.app.ui.components.CategorySheet
 import com.kharcha.app.ui.components.EmptyState
+import com.kharcha.app.ui.components.Foot
 import com.kharcha.app.ui.components.Eyebrow
 import com.kharcha.app.ui.components.Gap
 import com.kharcha.app.ui.components.GroupItem
@@ -306,6 +307,11 @@ fun SheetScreen(key: SheetRoute) {
                     }
                 }
 
+                if (tab == 1 && waiting.isNotEmpty()) {
+                    item(key = "pending-hint") {
+                        Foot("Pending is for money that has not moved yet. Gave a friend money and waiting to get it back? Open the item and set \"Lent to a friend\": it then lives under Friends, with who owes what.")
+                    }
+                }
                 if (searching) {
                     item(key = "search") {
                         SearchField(query, { query = it }, "Search this sheet", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), autoFocus = true)

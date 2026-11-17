@@ -85,6 +85,56 @@ fun PayerSheet(
     }
 }
 
+/** Pick one friend, or "none of them". Used for money lent or borrowed. */
+@Composable
+fun FriendSheet(
+    title: String,
+    /** The first row, which picks nobody ("Not a loan"). */
+    none: String,
+    noneNote: String?,
+    /** The line under each friend's name. */
+    friendNote: String?,
+    people: List<Person>,
+    selectedId: String?,
+    onPick: (String?) -> Unit,
+    onAdd: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val row = MaterialTheme.colorScheme.surfaceContainerHigh
+    KSheet(onDismiss, title) {
+        Column(
+            Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            KGroup {
+                CheckRow(
+                    0, 1, none, selected = selectedId == null,
+                    onClick = { onPick(null); onDismiss() },
+                    subtitle = noneNote,
+                    background = row,
+                    leading = { IconTile(Ic.close, MaterialTheme.colorScheme.outline) },
+                )
+            }
+            if (people.isNotEmpty()) {
+                Gap(10.dp)
+                KGroup {
+                    people.forEachIndexed { index, person ->
+                        CheckRow(
+                            index, people.size, person.name, selected = person.id == selectedId,
+                            onClick = { onPick(person.id); onDismiss() },
+                            subtitle = friendNote,
+                            background = row,
+                            leading = { ShapeAvatar(person.name, person.id, size = 40.dp) },
+                        )
+                    }
+                }
+            }
+        }
+        AddFriend(onAdd)
+    }
+}
+
 /** Which friends share a bill you paid. Tap to tick or untick; the sheet stays open. */
 @Composable
 fun SplitWithSheet(

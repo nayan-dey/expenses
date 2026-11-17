@@ -22,6 +22,8 @@ import com.kharcha.app.core.model.AppData
 import com.kharcha.app.core.util.Dates
 import com.kharcha.app.data.KharchaFile
 import com.kharcha.app.data.Seed
+import com.kharcha.app.platform.AutoExport
+import com.kharcha.app.platform.Share
 import com.kharcha.app.ui.components.AppBar
 import com.kharcha.app.ui.components.Btn
 import com.kharcha.app.ui.components.BtnSize
@@ -40,6 +42,36 @@ import com.kharcha.app.ui.nav.LocalContainer
 import com.kharcha.app.ui.nav.LocalMessenger
 import com.kharcha.app.ui.nav.LocalNav
 import kotlinx.coroutines.launch
+
+/**
+ * "Back up now": one tap writes a full backup into the phone's Downloads folder (in a folder
+ * called Kharcha), with no questions asked. Android older than 10 cannot do that without a
+ * storage permission, so there `fallback` runs instead (the "where should it go?" screen).
+ */
+@Composable
+fun rememberBackupNow(fallback: () -> Unit): () -> Unit {
+    val app = LocalContainer.current
+    val messenger = LocalMessenger.current
+    val haptics = rememberHaptics()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    return {
+        if (!AutoExport.supported()) {
+            fallback()
+        } else {
+            scope.launch {
+                val moment = app.now()
+                val name = "kharcha-backup-${Dates.iso(moment)}-${Dates.isoTime(moment).replace(":", "")}.zip"
+                val ok = AutoExport.saveNow(context, app.exchange, name)
+                if (ok) {
+                    app.settings.update { it.copy(lastBackupAt = app.now()) }
+                    haptics.confirm()
+                }
+                messenger.show(if (ok) "Backup saved in Downloads, in the Kharcha folder" else "Could not save the backup")
+            }
+        }
+    }
+}
 
 /**
  * Backup and restore. Kharcha has no cloud of its own, so this takes the place of "sync":
@@ -87,6 +119,9 @@ fun BackupScreen() {
         }
     }
 
+    val fileName = { "kharcha-backup-${Dates.iso(app.now())}.zip" }
+    val backupNow = rememberBackupNow(fallback = { save.launch(fileName()) })
+
     ScreenColumn {
         AppBar(onBack = { nav.back() }, title = "Backup")
         Text(
@@ -96,11 +131,36 @@ fun BackupScreen() {
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp),
         )
         Gap(6.dp)
+        // One tap: straight into Downloads, or straight into the share sheet (Drive, WhatsApp, email).
+        androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            Btn("Back up now", backupNow, icon = Ic.backup)
+            Btn(
+                "Send a copy",
+                {
+                    scope.launch {
+                        val (file, uri) = Share.newFile(context, fileName())
+                        val ok = runCatching { file.outputStream().use { app.exchange.writeBackup(it) } }.isSuccess
+                        if (ok) {
+                            app.settings.update { it.copy(lastBackupAt = app.now()) }
+                            Share.send(context, uri, "application/zip", "Kharcha backup")
+                        } else {
+                            messenger.show("Could not make the backup")
+                        }
+                    }
+                },
+                icon = Ic.ios_share,
+                style = BtnStyle.TONAL,
+            )
+        }
+        Foot(
+            (if (settings.lastBackupAt == 0L) "No backup saved yet. " else "Last saved ${Dates.ago(settings.lastBackupAt, now)}. ") +
+                "\"Back up now\" puts the file in the phone's Downloads folder, in a folder called Kharcha. \"Send a copy\" hands it to another app, such as Drive or a chat with yourself, so it also survives a lost phone.",
+        )
         KGroup {
             SettingRow(
-                0, 2, "Save a backup", icon = Ic.backup, iconColor = Color(0xFF3F8EF5),
-                subtitle = if (settings.lastBackupAt == 0L) "Never saved" else "Last saved ${Dates.ago(settings.lastBackupAt, now)}",
-                onClick = { save.launch("kharcha-backup-${Dates.iso(app.now())}.zip") },
+                0, 2, "Save a backup somewhere else", icon = Ic.backup, iconColor = Color(0xFF3F8EF5),
+                subtitle = "Choose the folder yourself",
+                onClick = { save.launch(fileName()) },
             )
             SettingRow(
                 1, 2, "Open a backup or shared sheet", icon = Ic.file_open, iconColor = Color(0xFF45C466),

@@ -169,6 +169,8 @@ class Ledger(
         pending: Boolean,
         repeat: Repeat,
         pictures: List<String>,
+        /** The sum as typed on the keypad, when it was a sum. */
+        expr: String = "",
     ) {
         val time = now()
         val id = transferId ?: newId()
@@ -192,6 +194,7 @@ class Ledger(
                 images = if (kind == Kind.EXPENSE) pictures else emptyList(),
                 transferId = id,
                 transferPeerSheetId = peer,
+                expr = expr,
                 createdAt = previous?.createdAt ?: time,
                 editedAt = time,
             )

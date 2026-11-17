@@ -60,6 +60,8 @@ fun AppBar(
     modifier: Modifier = Modifier,
     title: String = "",
     subtitle: String = "",
+    /** The eye that hides and shows every amount. On by default, so it is within reach on every screen. */
+    eye: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     // The bar is the first thing inside a scrolling page. Moving it down by exactly the
@@ -85,7 +87,10 @@ fun AppBar(
         },
         modifier = modifier.then(pinned),
         navigationIcon = { IconBtn(Ic.arrow_back, "Back", onBack) },
-        actions = actions,
+        actions = {
+            if (eye) SensitiveToggle()
+            actions()
+        },
         windowInsets = NoInsets,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
     )

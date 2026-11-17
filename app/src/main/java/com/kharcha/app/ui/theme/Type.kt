@@ -38,12 +38,24 @@ private val Jakarta = family(R.font.plus_jakarta_sans)
 private val Manrope = family(R.font.manrope)
 private val Figtree = family(R.font.figtree)
 private val SpaceGrotesk = family(R.font.space_grotesk)
+// Google Sans is cut down to Latin letters, digits and money signs (see AGENTS.md); its weights stop at 700.
+private val GoogleSans = family(R.font.google_sans)
+// Poppins has no variable file: one file per weight. It has no same-width digits, so columns of
+// money line up a little less neatly than in the others.
+private val Poppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight(400)),
+    Font(R.font.poppins_medium, FontWeight(500)),
+    Font(R.font.poppins_semibold, FontWeight(600)),
+    Font(R.font.poppins_bold, FontWeight(700)),
+)
 
 fun fontFamily(choice: FontChoice): FontFamily = when (choice) {
     FontChoice.JAKARTA -> Jakarta
     FontChoice.MANROPE -> Manrope
     FontChoice.FIGTREE -> Figtree
     FontChoice.SPACE -> SpaceGrotesk
+    FontChoice.GOOGLE -> GoogleSans
+    FontChoice.POPPINS -> Poppins
     FontChoice.SYSTEM -> FontFamily.Default
 }
 

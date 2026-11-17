@@ -70,6 +70,8 @@ import com.kharcha.app.ui.components.ShapeAvatar
 import com.kharcha.app.ui.components.money
 import com.kharcha.app.ui.components.rememberHaptics
 import com.kharcha.app.ui.components.rememberNow
+import com.kharcha.app.ui.components.setSensitive
+import androidx.compose.ui.platform.LocalContext
 import com.kharcha.app.ui.icons.Ic
 import com.kharcha.app.ui.nav.BackupRoute
 import com.kharcha.app.ui.nav.ItemRoute
@@ -95,6 +97,7 @@ fun HomeScreen() {
     val app = LocalContainer.current
     val nav = LocalNav.current
     val messenger = LocalMessenger.current
+    val context = LocalContext.current
     val haptics = rememberHaptics()
     val scheme = MaterialTheme.colorScheme
     val data by app.ledger.data.collectAsStateWithLifecycle()
@@ -419,10 +422,7 @@ fun HomeScreen() {
             IconBtn(
                 if (settings.sensitive) Ic.visibility_off else Ic.visibility,
                 if (settings.sensitive) "Show amounts" else "Hide amounts",
-                {
-                    app.settings.update { it.copy(sensitive = !it.sensitive) }
-                    messenger.show(if (settings.sensitive) "Amounts are showing" else "Amounts are hidden")
-                },
+                { setSensitive(app, context, messenger, hide = !settings.sensitive) },
                 toggled = settings.sensitive,
             )
             IconBtn(Ic.group, "Friends", { nav.go(PeopleRoute) })
